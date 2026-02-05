@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <title>Login</title>
+</head>
+<body class="bg-black text-white">
+    <div class="flex flex-row h-screen w-screen">
+        <div class="w-1/2 h-full flex items-center justify-center text-6xl font-bold">SMVWA</div>
+        <div class="w-1/2 h-full flex flex-col justify-center gap-5">
+            <h1 class="text-3xl">Login</h1>
+            <% if (typeof error !== 'undefined') { %>
+                <div class="p-3 bg-red-900 text-white rounded"><%= error %></div>
+            <% } %>
+            <form action="/login" method="POST" class="flex flex-col gap-3 w-1/2">
+                <input type="email" name="email" placeholder="Email" class="p-2 rounded bg-black border border-white focus:outline-none focus:border-blue-500" required>
+                <input type="password" name="password" placeholder="Password" class="p-2 rounded bg-black border border-white focus:outline-none focus:border-blue-500" required>
+                <button type="submit" class="p-2 rounded-full bg-white text-black hover:bg-gray-200">Sign In</button>
+            </form>
+            <p>Don't have an account? <a href="/register" class="text-blue-500 hover:underline">Sign Up</a></p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="/js/login.js"></script>
+</body>
+</html>

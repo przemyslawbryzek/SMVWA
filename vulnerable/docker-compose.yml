@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: smvwa_db
+    restart: always
+    environment:
+      POSTGRES_USER: smvwa_user
+      POSTGRES_PASSWORD: smvwa_password
+      POSTGRES_DB: smvwa_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: smvwa_backend
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: smvwa_user
+      DB_PASSWORD: smvwa_password
+      DB_NAME: smvwa_db
+    depends_on:
+      - postgres
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: smvwa_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      API_URL: http://backend:3001/api
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:

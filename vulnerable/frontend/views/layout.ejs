@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <title>SMVWA</title>
+</head>
+<body class="bg-black">
+    <div class="flex flex-row h-screen w-screen">
+        <div class="flex flex-col items-center text-white border-stone-700 border-r-1 h-full w-2/7 gap-2">
+            <div class="m-2 hover:bg-stone-900 cursor-pointer p-3 rounded-full font-bold text-2xl">SMVWA</div>
+            <div class="flex flex-row items-center w-1/3 gap-5 hover:bg-stone-900 cursor-pointer p-3 rounded-full">
+                <img class="size-10" src="https://img.icons8.com/?size=100&id=2797&format=png&color=FFFFFF">
+                <p>Home</p>
+            </div>
+            <div class="flex flex-row items-center w-1/3 gap-5 hover:bg-stone-900 cursor-pointer p-3 rounded-full">
+                <img class="size-10" src="https://img.icons8.com/?size=100&id=7695&format=png&color=FFFFFF">
+                <p>Explore</p>
+            </div>
+            <div class="flex flex-row items-center w-1/3 gap-5 hover:bg-stone-900 cursor-pointer p-3 rounded-full">
+                <img class="size-10" src="https://img.icons8.com/?size=100&id=53388&format=png&color=FFFFFF">
+                <p>Chat</p>
+            </div>
+            <div class="flex flex-row items-center w-1/3 gap-5 hover:bg-stone-900 cursor-pointer p-3 rounded-full">
+                <img class="size-10" src="https://img.icons8.com/?size=100&id=15265&format=png&color=FFFFFF">
+                <p>Profile</p>
+            </div>
+            <div class="mt-auto mb-4 flex flex-row items-center hover:bg-stone-900 cursor-pointer p-3 rounded-full">   
+                <img class=" size-10 rounded-full ml-3" id="profile-img" src="">
+                <div class="flex flex-col ml-5">
+                    <p id="username" class="text-center"></p>
+                    <p id="email" class="text-center text-gray-500"></p>
+                </div>
+                <p class="pl-30">...</p>
+
+            </div>
+        </div>
+        <div class="text-white h-full w-3/7">
+            <%- include(`./pages/${page}`) %>
+        </div>
+        <div class="text-white border-stone-700 border-l-1 h-full w-2/7">
+            <div class="relative m-4">
+                <img class="size-5 absolute left-3 top-1/2 transform -translate-y-1/2" src="https://img.icons8.com/?size=100&id=7695&format=png&color=FFFFFF">
+                <input type="text" placeholder="Search" class="p-2 pl-10 w-full rounded-full bg-black border border-stone-700 focus:outline-none focus:border-blue-500">
+            </div>
+            <div class="flex flex-col m-4 p-4  rounded-lg border border-stone-700">  
+                <p class="font-bold">WHO TO FOLLOW</p>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="/js/layout.js"></script>
+</body>
+</html>

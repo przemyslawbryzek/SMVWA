@@ -1,0 +1,18 @@
+<div class="flex flex-row justify-between h-15 border-stone-700 border-b-1">
+    <div class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900">For you</div>
+    <div class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900">Following</div>
+</div>
+<div class="p-4 border-stone-700 border-b-1">
+    <form id="post-form" class="flex flex-col gap-3">
+        <textarea name="content" placeholder="What's happening?" class="p-2 bg-black text-white focus:outline-none h-24" required></textarea>
+        <button type="submit" class="self-end px-4 py-2 rounded-full bg-white text-black hover:bg-gray-200">Post</button>
+    </form>
+</div>
+
+<!-- Posts -->
+<div id="posts-container" class="flex flex-col">
+  <div class="p-4 text-center text-gray-500">Loading...</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="/js/home.js"></script>
