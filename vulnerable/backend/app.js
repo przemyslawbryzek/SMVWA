@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 3001;
 const authRoutes = require('./routes/auth');
 const postsRoutes = require('./routes/posts');
 const usersRoutes = require('./routes/users');
+const uploadRoutes = require('./routes/upload');
 
 app.use(cors({
   origin: ['http://localhost:3000', 'http://frontend:3000'],
@@ -24,6 +25,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.listen(PORT, () => {
   console.log(`API Backend działa na http://localhost:${PORT}`);

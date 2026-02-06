@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
   parent_id INTEGER NULL,
   root_id INTEGER NULL,
   content TEXT NOT NULL,
+  attachments TEXT[],
   created_at TIMESTAMP DEFAULT NOW(),
   CONSTRAINT fk_posts_user
     FOREIGN KEY (user_id)

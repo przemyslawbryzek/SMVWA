@@ -1,11 +1,23 @@
-<div class="flex flex-row justify-between h-15 border-stone-700 border-b-1">
+<div class="flex flex-row justify-between h-15 border-stone-700 border-b-1 fixed top-0 bg-black z-10 w-3/7">
     <div class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900">For you</div>
     <div class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900">Following</div>
 </div>
-<div class="p-4 border-stone-700 border-b-1">
-    <form id="post-form" class="flex flex-col gap-3">
+<div class="flex flex-row justify-between h-15 border-stone-700 border-b-1 ">
+    <div class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900">For you</div>
+    <div class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900">Following</div>
+</div>
+<div class="p-4 border-stone-700 border-b-1 flex flex-row gap-4 w-full">
+    <img class="size-10 rounded-full" id="profile-img" src="">
+    <form id="post-form" class="flex flex-col gap-3 w-full">
+            <input type="file" id="attachment-input" class="hidden" accept="image/*,video/*" multiple>
         <textarea name="content" placeholder="What's happening?" class="p-2 bg-black text-white focus:outline-none h-24" required></textarea>
-        <button type="submit" class="self-end px-4 py-2 rounded-full bg-white text-black hover:bg-gray-200">Post</button>
+        <div id="attachments-preview" class="flex gap-2 flex-wrap"></div>
+        <div class="flex flex-row justify-between items-center w-full">
+            <button type="button" id="add-attachment-btn">
+                <img class="size-5" src="https://img.icons8.com/?size=100&id=cD26kdwTbCzt&format=png&color=00BFFF" alt="Add Attachment">
+            </button>
+            <button type="submit" class="self-end px-4 py-2 rounded-full bg-white text-black hover:bg-gray-200">Post</button>
+        </div>
     </form>
 </div>
 
@@ -14,5 +26,4 @@
   <div class="p-4 text-center text-gray-500">Loading...</div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="/js/home.js"></script>

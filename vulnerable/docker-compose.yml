@@ -26,6 +26,8 @@ services:
       DB_USER: smvwa_user
       DB_PASSWORD: smvwa_password
       DB_NAME: smvwa_db
+    volumes:
+      - ./backend/uploads:/app/uploads
     depends_on:
       - postgres
     restart: always

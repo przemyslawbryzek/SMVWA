@@ -1,20 +1,3 @@
-const API_URL = 'http://localhost:3001/api';
-
-document.getElementById('post-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  const content = e.target.elements.content.value;
-
-  try {
-    await axios.post(`${API_URL}/posts`, { content }, {
-      withCredentials: true
-    });
-    e.target.reset();
-    loadPosts();
-  } catch (error) {
-    alert(error.response?.data?.error || 'Failed to create post');
-  }
-});
 async function loadPosts() {
   const token = document.cookie.split('; ').find(row => row.startsWith('auth='));
   
@@ -34,39 +17,7 @@ async function loadPosts() {
     
     if (posts.length > 0) {
       posts.forEach(post => {
-        const postDiv = document.createElement("div");
-        postDiv.className = "p-4 border-stone-700 border-b-1 hover:bg-stone-900 w-full";
-        postDiv.innerHTML = `
-          <div class="flex flex-row w-full">
-            <img class="size-10 rounded-full mr-2" src="${post.author.profile_image || 'https://via.placeholder.com/40'}" alt="Profile Image">
-            <div class="flex flex-col w-full">
-              <div class="flex flex-row w-full items-center">
-                <p class="font-bold">${post.author.username}</p>
-                <p class="text-gray-500 ml-2">@${post.author.email}</p>
-                <p class="text-gray-500 ml-2">· ${new Date(post.created_at).toLocaleString()}</p>
-                <img class="size-5 ml-auto rounded-full cursor-pointer hover:bg-blue-800" src="https://img.icons8.com/?size=100&id=12620&format=png&color=FFFFFF" alt="More Options">
-              </div>
-              <p class="mt-2 text-wrap break-all text-clip w-full">${post.content}</p>
-              <div class="flex flex-row mt-2 gap-4 text-gray-500 justify-between w-2/3">
-                <div class="flex flex-row items-center gap-1 group cursor-pointer">
-                  <img class="size-5 group-hover:hidden" src="https://img.icons8.com/?size=100&id=143&format=png&color=FFFFFF">
-                  <img class="size-5 hidden group-hover:block" src="https://img.icons8.com/?size=100&id=143&format=png&color=3B82F6">
-                  <span class="group-hover:text-blue-500">${post.comments_count || 0}</span>
-                </div>
-                <div class="flex flex-row items-center gap-1 group hover:text-green-500 cursor-pointer" onclick="repostPost(${post.id})">
-                  <img class="size-5 group-hover:hidden" src="https://img.icons8.com/?size=100&id=GZmx08TD7nCw&format=png&color=FFFFFF">
-                  <img class="size-5 hidden group-hover:block" src="https://img.icons8.com/?size=100&id=GZmx08TD7nCw&format=png&color=00FF00">
-                  <span>${post.reposts_count || 0}</span>
-                </div>
-                <div class="flex flex-row items-center gap-1 group hover:text-red-500 cursor-pointer" onclick="likePost(${post.id})">
-                  <img class="size-5 group-hover:hidden" src="https://img.icons8.com/?size=100&id=85038&format=png&color=FFFFFF">
-                  <img class="size-5 hidden group-hover:block" src="https://img.icons8.com/?size=100&id=85038&format=png&color=FF0000">
-                  <span>${post.likes_count || 0}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
+        const postDiv = renderPost(post, { isClickable: true, maxImageWidth: 'max-h-60 max-w-2/3' });
         postsContainer.appendChild(postDiv);
       });
     } else {
@@ -96,4 +47,52 @@ async function repostPost(postId) {
     alert(error.response?.data?.error || 'Failed to repost post');
   }
 }
-loadPosts();
+
+document.getElementById('posts-container').addEventListener('click', (e) => {
+  const actionBtn = e.target.closest('[data-action]');
+  if (!actionBtn) return;
+  
+  e.preventDefault();
+  e.stopPropagation();
+  
+  const action = actionBtn.dataset.action;
+  const postId = actionBtn.dataset.postId;
+  
+  if (action === 'like') {
+    likePost(postId);
+  } else if (action === 'repost') {
+    repostPost(postId);
+  } else if (action === 'comment') {
+    window.location.href = `/post/${postId}`;
+  } else if (action === 'more') {
+    showMoreOptions(postId, actionBtn);
+  }
+});
+
+async function loadProfileIcon() {
+  try {
+    const response = await axios.get(`${API_URL}/users/profile`, {
+      withCredentials: true
+    });
+    
+    const user = response.data.user;
+    
+  const profileImg = document.querySelector('#profile-img');
+  if (profileImg) {
+    profileImg.src = user.profile_image || 'https://via.placeholder.com/40';
+  }
+  } catch (error) {
+    console.error('Failed to load profile icon:', error);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initializeAttachmentHandlers('add-attachment-btn', 'attachment-input', 'attachments-preview');
+
+  handlePostSubmit('post-form', 'attachments-preview', {}, () => {
+    loadPosts();
+  });
+
+  loadProfileIcon();
+  loadPosts();
+});

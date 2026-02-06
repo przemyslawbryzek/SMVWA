@@ -1,5 +1,3 @@
-const API_URL = "http://localhost:3001/api";
-
 document.querySelector("form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
