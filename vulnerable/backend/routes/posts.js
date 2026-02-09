@@ -3,7 +3,7 @@ const router = express.Router();
 const pool = require('../db/pool');
 const authMiddleware = require('../middleware/auth');
 
-router.get('/', async (req, res) => {
+router.get('/',authMiddleware, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM posts WHERE root_id IS NULL ORDER BY created_at DESC');
     for (let post of result.rows) {
@@ -12,6 +12,8 @@ router.get('/', async (req, res) => {
         post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
         post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
         post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
+        post.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
+        post.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
     }
     res.json({posts: result.rows });
   } catch (error) {
@@ -30,7 +32,7 @@ router.post('/', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
     const postId = req.params.id;
     try {
         const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
@@ -43,6 +45,8 @@ router.get('/:id', async (req, res) => {
         post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
         post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
         post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
+        post.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
+        post.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
         res.json({ post });
     } catch (error) {
         console.error('Error fetching post:', error);
@@ -118,7 +122,7 @@ router.get('/:id/repost', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-router.get('/:id/comments', async (req, res) => {
+router.get('/:id/comments', authMiddleware, async (req, res) => {
     const postId = req.params.id;
     try {
         const commentsResult = await pool.query('SELECT * FROM posts WHERE parent_id = $1 ORDER BY created_at DESC', [postId]);
@@ -128,6 +132,8 @@ router.get('/:id/comments', async (req, res) => {
             comment.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [comment.id])).rows[0].count;
             comment.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [comment.id])).rows[0].count;
             comment.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [comment.id])).rows[0].count;
+            comment.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, comment.id])).rows.length > 0 : false;
+            comment.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, comment.id])).rows.length > 0 : false;
         }
         res.json({ comments: commentsResult.rows });
     } catch (error) {
@@ -135,7 +141,7 @@ router.get('/:id/comments', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-router.get('/:id/thread', async (req, res) => {
+router.get('/:id/thread', authMiddleware, async (req, res) => {
     const postId = req.params.id;
     try {
         const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
@@ -146,7 +152,6 @@ router.get('/:id/thread', async (req, res) => {
         const thread = [];
         let currentPost = postResult.rows[0];
         
-        // Zbierz wszystkie posty od aktualnego do roota
         while (currentPost.parent_id) {
             const parentResult = await pool.query('SELECT * FROM posts WHERE id = $1', [currentPost.parent_id]);
             if (parentResult.rows.length === 0) break;
@@ -157,6 +162,8 @@ router.get('/:id/thread', async (req, res) => {
             parentPost.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [parentPost.id])).rows[0].count;
             parentPost.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [parentPost.id])).rows[0].count;
             parentPost.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [parentPost.id])).rows[0].count;
+            parentPost.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, parentPost.id])).rows.length > 0 : false;
+            parentPost.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, parentPost.id])).rows.length > 0 : false;
             
             thread.unshift(parentPost);
             currentPost = parentPost;

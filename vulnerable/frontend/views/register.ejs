@@ -11,8 +11,8 @@
         <div class="w-1/2 h-full flex items-center justify-center text-6xl font-bold">SMVWA</div>
         <div class="w-1/2 h-full flex flex-col justify-center gap-5">
             <h1 class="text-3xl">Register</h1>
-            <% if (typeof error !== 'undefined') { %>
-                <div class="p-3 bg-red-900 text-white rounded"><%= error %></div>
+            <% if (error !== null) { %>
+                <div class="p-3 bg-red-900 text-white rounded w-1/2"><%= error %></div>
             <% } %>
             <form action="/register" method="POST" class="flex flex-col gap-3 w-1/2">
                 <input type="text" name="username" placeholder="Username" class="p-2 rounded bg-black border border-white focus:outline-none focus:border-blue-500" required>
@@ -24,9 +24,5 @@
             <p>Already have an account? <a href="/login" class="text-blue-500 hover:underline">Sign In</a></p>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="/js/config.js"></script>
-    <script src="/js/register.js"></script>
 </body>
 </html>

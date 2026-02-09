@@ -1,0 +1,49 @@
+<a href="/post/<%- post.id %>" class="flex flex-row hover:bg-stone-900 w-full p-4 border-b border-stone-700">
+    <img class="size-10 rounded-full" 
+         src="<%- post.author.profile_image || 'https://via.placeholder.com/40' %>" 
+         alt="Profile">
+    
+    <div class="flex flex-col ml-3 w-full">
+        <div class="flex flex-row items-center gap-2 w-full">
+            <p class="font-bold"><%- post.author.username %></p>
+            <p class="text-gray-500">@<%- post.author.email %></p>
+            <p class="text-gray-500">· <%= new Date(post.created_at).toLocaleString() %></p>
+            <button class="action-btn flex items-center gap-1 hover:text-blue-500 transition-colors ml-auto" 
+                    data-action="more" 
+                    data-post-id="<%- post.id %>">
+                <img class="size-5" src="https://img.icons8.com/?size=100&id=12620&format=png&color=808080">
+            </button>
+        </div>
+        <p class="mt-2"><%- post.content %></p>
+        <% if (post.attachments && post.attachments.length > 0) { %>
+            <div class="grid gap-2 mt-2">
+                <% post.attachments.forEach(attachment => { %>
+                    <img class="max-h-60 rounded-lg" 
+                         src="<%- attachment %>" 
+                         alt="Attachment">
+                <% }); %>
+            </div>
+        <% } %>
+        <div class="flex flex-row gap-5 mt-2 text-gray-500 justify-between w-5/7">
+            <button class="action-btn flex items-center gap-1 hover:text-blue-500 transition-colors" 
+                    data-action="comment" 
+                    data-post-id="<%- post.id %>">
+                <img class="size-5" src="https://img.icons8.com/?size=100&id=143&format=png&color=808080">
+                <span class="count"><%- post.comments_count || 0 %></span>
+            </button>
+            <button class="action-btn flex items-center gap-1 hover:text-green-500 transition-colors <%= post.reposted_by_user ? 'text-green-500' : '' %>" 
+                    data-action="repost" 
+                    data-post-id="<%- post.id %>">
+                <img class="size-5" src="https://img.icons8.com/?size=100&id=GZmx08TD7nCw&format=png&color=<%= post.reposted_by_user ? '00FF00' : '808080' %>">
+                <span class="count"><%- post.reposts_count || 0 %></span>
+            </button>
+            <button class="action-btn flex items-center gap-1 hover:text-red-500 transition-colors <%= post.liked_by_user ? 'text-red-500' : '' %>" 
+                    data-action="like" 
+                    data-post-id="<%- post.id %>"
+                    data-liked="<%- post.liked_by_user ? 'true' : 'false' %>">
+                <img class="size-5" src="https://img.icons8.com/?size=100&id=85038&format=png&color=<%= post.liked_by_user ? 'FF0000' : '808080' %>">
+                <span class="count"><%- post.likes_count || 0 %></span>
+            </button>
+        </div>
+    </div>
+</a>

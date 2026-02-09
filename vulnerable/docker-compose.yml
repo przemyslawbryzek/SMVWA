@@ -26,6 +26,7 @@ services:
       DB_USER: smvwa_user
       DB_PASSWORD: smvwa_password
       DB_NAME: smvwa_db
+      BACKEND_URL: http://localhost:3001
     volumes:
       - ./backend/uploads:/app/uploads
     depends_on:
@@ -39,7 +40,7 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: development
-      API_URL: http://backend:3001/api
+      API_URL: http://backend:3001
     depends_on:
       - backend
     restart: always
