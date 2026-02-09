@@ -1,4 +1,4 @@
-const API_URL = window.location.origin;
+window.API_URL = window.API_URL || window.location.origin;
 
 document.addEventListener('DOMContentLoaded', () => {
   const postForm = document.getElementById('post-form');
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
           formData.append('attachments', file);
         });
         
-        const uploadResponse = await fetch(`${API_URL}/api/upload`, {
+        const uploadResponse = await fetch(`${window.API_URL}/api/upload`, {
           method: 'POST',
           credentials: 'include',
           body: formData
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
         parent_id: parentId !== 'null' ? parseInt(parentId) : null
       };
       
-      const response = await fetch(`${API_URL}/api/posts`, {
+      const response = await fetch(`${window.API_URL}/api/posts`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -142,7 +142,7 @@ async function handleLike(postId, button) {
   }
   
   try {
-    const response = await fetch(`${API_URL}/api/posts/${postId}/like`, {
+    const response = await fetch(`${window.API_URL}/api/posts/${postId}/like`, {
       method: 'GET',
       credentials: 'include'
     });
@@ -184,7 +184,7 @@ async function handleRepost(postId, button) {
   }
   
   try {
-    const response = await fetch(`${API_URL}/api/posts/${postId}/repost`, {
+    const response = await fetch(`${window.API_URL}/api/posts/${postId}/repost`, {
       method: 'GET',
       credentials: 'include'
     });
@@ -258,7 +258,7 @@ document.addEventListener('click', async (e) => {
     if (!confirm('Are you sure you want to delete this post?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/posts/${postId}`, {
+      const response = await fetch(`${window.API_URL}/api/posts/${postId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -289,3 +289,79 @@ document.addEventListener('click', async (e) => {
     document.querySelector('.more-menu')?.remove();
   }
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+  const followBtn = document.getElementById('follow-btn');
+  
+  if (followBtn) {
+    followBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const userId = followBtn.getAttribute('data-user-id');
+      await handleFollow(userId, followBtn);
+    });
+  }
+});
+
+document.addEventListener('click', async (e) => {
+  const buttonText = e.target.textContent?.trim();
+  if (e.target.tagName === 'BUTTON' && (buttonText === 'Follow' || buttonText === 'Following')) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Skip if this is the #follow-btn (already handled above)
+    if (e.target.id === 'follow-btn') return;
+    
+    const userId = e.target.getAttribute('data-user-id');
+    if (!userId) return;
+    
+    await handleFollow(userId, e.target);
+  }
+});
+
+async function handleFollow(userId, button) {
+  const isFollowing = button.textContent.trim() === 'Following';
+  const originalText = button.textContent;
+  const originalClasses = button.className;
+  
+  if (isFollowing) {
+    button.textContent = 'Follow';
+    button.classList.remove('bg-green-500', 'bg-green-600', 'text-white', 'hover:bg-green-600');
+    button.classList.add('bg-white', 'text-black', 'hover:bg-gray-200');
+  } else {
+    button.textContent = 'Following';
+    button.classList.remove('bg-white', 'text-black', 'hover:bg-gray-200');
+    button.classList.add('bg-green-500', 'text-white', 'hover:bg-green-600');
+  }
+  
+  try {
+    const response = await fetch(`${window.API_URL}/api/users/${userId}/follow`, {
+      method: isFollowing ? 'DELETE' : 'POST',
+      credentials: 'include'
+    });
+    
+    if (!response.ok) throw new Error('Failed');
+    const followersCount = document.querySelector('.followers-count');
+    if (followersCount) {
+      const currentCount = parseInt(followersCount.textContent) || 0;
+      followersCount.textContent = isFollowing ? currentCount - 1 : currentCount + 1;
+    }
+    document.querySelectorAll(`button[data-user-id="${userId}"]`).forEach(btn => {
+      if (btn === button) return;
+      if (isFollowing) {
+        btn.textContent = 'Follow';
+        btn.classList.remove('bg-green-500', 'bg-green-600', 'text-white', 'hover:bg-green-600');
+        btn.classList.add('bg-white', 'text-black', 'hover:bg-gray-200');
+      } else {
+        btn.textContent = 'Following';
+        btn.classList.remove('bg-white', 'text-black', 'hover:bg-gray-200');
+        btn.classList.add('bg-green-500', 'text-white', 'hover:bg-green-600');
+      }
+    });
+    
+  } catch (error) {
+    console.error('Follow error:', error);
+    button.textContent = originalText;
+    button.className = originalClasses;
+    alert('Failed to update follow status');
+  }
+}

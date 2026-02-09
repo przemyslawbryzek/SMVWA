@@ -13,4 +13,22 @@ function authMiddleware(req, res, next) {
   }
 }
 
+function optionalAuthMiddleware(req, res, next) {
+  const authCookie = req.cookies.auth;
+  if (!authCookie) {
+    req.user = null;
+    return next();
+  }
+  
+  try {
+    const decoded = Buffer.from(authCookie, 'base64').toString('utf-8');
+    req.user = JSON.parse(decoded);
+    next();
+  } catch (error) {
+    req.user = null;
+    next();
+  }
+}
+
 module.exports = authMiddleware;
+module.exports.optionalAuth = optionalAuthMiddleware;

@@ -80,4 +80,89 @@ router.get('/post/:id', async (req, res) => {
     });
   }
 });
+router.get('/profile', async (req, res) => {
+  try {
+    const axiosConfig = getAxiosConfig(req);
+    if (!req.cookies || !req.cookies.auth) {
+      return res.redirect('/login');
+    }
+    const [userResponse, postsResponse, suggestionsResponse] = await Promise.all([
+      axios.get(`${API_URL}/api/users/profile`, axiosConfig),
+      axios.get(`${API_URL}/api/posts/user`, axiosConfig).catch(() => ({ data: { posts: [] } })),
+      axios.get(`${API_URL}/api/users/suggestions`, axiosConfig).catch(() => ({ data: { suggestions: [] } }))
+    ]);
+    res.render('layout', {
+      page: 'profile.ejs',
+      user: userResponse.data.user,
+      profileUser: userResponse.data.user,
+      posts: postsResponse.data.posts || [],
+      suggestions: suggestionsResponse.data.suggestions || [],
+      isOwner: true,
+      isFollowing: false
+    });
+
+  } catch (error) {
+    console.error('Error loading profile page:', error.message);
+
+    if (error.response?.status === 401) {
+      return res.redirect('/login');
+    }
+
+    res.render('layout', {
+      page: 'profile.ejs',
+      user: null,
+      profileUser: null,
+      posts: [],
+      suggestions: [],
+      error: 'Failed to load data',
+      isOwner: false,
+      isFollowing: false
+    });
+  }
+});
+router.get('/profile/:id', async (req, res) => {
+  const userId = req.params.id;
+  try {
+    const axiosConfig = getAxiosConfig(req);
+    const [profileUserResponse, postsResponse, loggedInUserResponse, suggestionsResponse] = await Promise.all([
+      axios.get(`${API_URL}/api/users/profile/${userId}`, axiosConfig),
+      axios.get(`${API_URL}/api/posts/user/${userId}`, axiosConfig).catch(() => ({ data: { posts: [] } })),
+      axios.get(`${API_URL}/api/users/profile`, axiosConfig).catch(() => null),
+      axios.get(`${API_URL}/api/users/suggestions`, axiosConfig).catch(() => ({ data: { suggestions: [] } }))
+    ]);
+    
+    const loggedInUser = loggedInUserResponse?.data?.user || null;
+    const profileUser = profileUserResponse.data.user;
+    const isFollowing = profileUserResponse.data.isFollowing || false;
+    const isOwner = loggedInUser && loggedInUser.id === profileUser.id;
+    
+    res.render('layout', {
+      page: 'profile.ejs',
+      user: loggedInUser,
+      profileUser: profileUser,
+      posts: postsResponse.data.posts || [],
+      suggestions: suggestionsResponse.data.suggestions || [],
+      isOwner,
+      isFollowing
+    });
+
+  } catch (error) {
+    console.error('Error loading profile page:', error.message);
+
+    if (error.response?.status === 401) {
+      return res.redirect('/login');
+    }
+
+    res.render('layout', {
+      page: 'profile.ejs',
+      user: null,
+      profileUser: null,
+      posts: [],
+      suggestions: [],
+      error: 'Failed to load data',
+      isOwner: false,
+      isFollowing: false
+    });
+  }
+});
 module.exports = router;

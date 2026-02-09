@@ -1,6 +1,6 @@
 <div class="flex flex-row justify-between h-15 border-stone-700 border-b-1 fixed top-0 bg-black z-10 w-3/7">
-    <div class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900">For you</div>
-    <div class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900">Following</div>
+    <div id="tab-for-you" class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900 cursor-pointer border-b-2 border-blue-500 font-bold">For you</div>
+    <div id="tab-following" class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900 cursor-pointer">Following</div>
 </div>
 <div class="flex flex-row justify-between h-15 border-stone-700 border-b-1 ">
     <div class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900">For you</div>
@@ -12,3 +12,53 @@
         <%- include('../../components/postTemplate', { post }) %>
     <% }) %>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const tabForYou = document.getElementById('tab-for-you');
+    const tabFollowing = document.getElementById('tab-following');
+    const postsContainer = document.getElementById('posts-container');
+    
+    let currentTab = 'for-you';
+    
+    tabForYou.addEventListener('click', async () => {
+        if (currentTab === 'for-you') return;
+        
+        currentTab = 'for-you';
+        tabForYou.classList.add('border-b-2', 'border-blue-500', 'font-bold');
+        tabFollowing.classList.remove('border-b-2', 'border-blue-500', 'font-bold');
+        
+        await loadPosts('/api/posts/html');
+    });
+    
+    tabFollowing.addEventListener('click', async () => {
+        if (currentTab === 'following') return;
+        
+        currentTab = 'following';
+        tabFollowing.classList.add('border-b-2', 'border-blue-500', 'font-bold');
+        tabForYou.classList.remove('border-b-2', 'border-blue-500', 'font-bold');
+        
+        await loadPosts('/api/posts/followed/html');
+    });
+    
+    async function loadPosts(endpoint) {
+        try {
+            postsContainer.innerHTML = '<div class="p-4 text-center text-gray-500">Loading...</div>';
+            
+            const response = await fetch(`${window.API_URL}${endpoint}`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            
+            if (!response.ok) throw new Error('Failed to load posts');
+            
+            const html = await response.text();
+            postsContainer.innerHTML = html;
+            
+        } catch (error) {
+            console.error('Error loading posts:', error);
+            postsContainer.innerHTML = '<div class="p-4 text-center text-gray-500">Failed to load posts</div>';
+        }
+    }
+});
+</script>

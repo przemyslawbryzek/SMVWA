@@ -7,8 +7,8 @@ router.get('/',authMiddleware, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM posts WHERE root_id IS NULL ORDER BY created_at DESC');
     for (let post of result.rows) {
-        const userResult = await pool.query('SELECT username, email, profile_image FROM users WHERE id = $1', [post.user_id]);
-        post.author = userResult.rows[0] || { username: 'Unknown', email: '', profile_image: '' };
+        const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [post.user_id]);
+        post.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
         post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
         post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
         post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
@@ -32,6 +32,82 @@ router.post('/', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+router.get('/user', authMiddleware, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT p.*, 
+                   CASE WHEN r.user_id IS NOT NULL THEN true ELSE false END as is_repost,
+                   r.created_at as repost_date
+            FROM posts p
+            LEFT JOIN reposts r ON p.id = r.post_id AND r.user_id = $1
+            WHERE (p.user_id = $1 OR r.user_id = $1) 
+              AND p.root_id IS NULL
+            ORDER BY COALESCE(r.created_at, p.created_at) DESC
+        `, [req.user.userId]);
+        
+        for (let post of result.rows) {
+            const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [post.user_id]);
+            post.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
+            post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
+            post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
+            post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
+            post.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
+            post.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
+        }
+        res.json({ posts: result.rows });
+    } catch (error) {
+        console.error('Error fetching user posts:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.get('/user/:id', async (req, res) => {
+    const userId = req.params.id;
+    try {
+        const result = await pool.query('SELECT * FROM posts WHERE user_id = $1 AND root_id IS NULL ORDER BY created_at DESC', [userId]);
+        for (let post of result.rows) {
+            const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [post.user_id]);
+            post.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
+            post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
+            post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
+            post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
+            post.liked_by_user = false;
+            post.reposted_by_user = false;
+        }
+        res.json({ posts: result.rows });
+    } catch (error) {
+        console.error('Error fetching user posts:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.get('/followed', authMiddleware, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT p.*, 
+                   CASE WHEN r.user_id IS NOT NULL THEN true ELSE false END as is_repost,
+                   r.created_at as repost_date
+            FROM posts p
+            LEFT JOIN reposts r ON p.id = r.post_id AND r.user_id = $1
+            WHERE (p.user_id IN (SELECT following_id FROM followers WHERE follower_id = $1) OR r.user_id = $1) 
+              AND p.root_id IS NULL
+            ORDER BY COALESCE(r.created_at, p.created_at) DESC
+        `, [req.user.userId]);
+        
+        for (let post of result.rows) {
+            const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [post.user_id]);
+            post.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
+            post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
+            post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
+            post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
+            post.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
+            post.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
+        }
+        res.json({ posts: result.rows });
+    } catch (error) {
+        console.error('Error fetching followed posts:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 router.get('/:id', authMiddleware, async (req, res) => {
     const postId = req.params.id;
     try {
@@ -40,8 +116,8 @@ router.get('/:id', authMiddleware, async (req, res) => {
             return res.status(404).json({ error: 'Post not found' });
         }
         const post = postResult.rows[0];
-        const userResult = await pool.query('SELECT username, email, profile_image FROM users WHERE id = $1', [post.user_id]);
-        post.author = userResult.rows[0] || { username: 'Unknown', email: '', profile_image: '' };
+        const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [post.user_id]);
+        post.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
         post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
         post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
         post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
@@ -127,8 +203,8 @@ router.get('/:id/comments', authMiddleware, async (req, res) => {
     try {
         const commentsResult = await pool.query('SELECT * FROM posts WHERE parent_id = $1 ORDER BY created_at DESC', [postId]);
         for (let comment of commentsResult.rows) {
-            const userResult = await pool.query('SELECT username, email, profile_image FROM users WHERE id = $1', [comment.user_id]);
-            comment.author = userResult.rows[0] || { username: 'Unknown', email: '', profile_image: '' };
+            const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [comment.user_id]);
+            comment.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
             comment.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [comment.id])).rows[0].count;
             comment.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [comment.id])).rows[0].count;
             comment.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [comment.id])).rows[0].count;
@@ -157,8 +233,8 @@ router.get('/:id/thread', authMiddleware, async (req, res) => {
             if (parentResult.rows.length === 0) break;
             
             const parentPost = parentResult.rows[0];
-            const userResult = await pool.query('SELECT username, email, profile_image FROM users WHERE id = $1', [parentPost.user_id]);
-            parentPost.author = userResult.rows[0] || { username: 'Unknown', email: '', profile_image: '' };
+            const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [parentPost.user_id]);
+            parentPost.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
             parentPost.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [parentPost.id])).rows[0].count;
             parentPost.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [parentPost.id])).rows[0].count;
             parentPost.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [parentPost.id])).rows[0].count;
@@ -175,5 +251,4 @@ router.get('/:id/thread', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-
 module.exports = router;

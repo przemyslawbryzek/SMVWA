@@ -2,13 +2,14 @@ const express = require('express');
 const axios = require('axios');
 const FormData = require('form-data');
 const multer = require('multer');
+const ejs = require('ejs');
+const path = require('path');
 const { getAxiosConfig } = require('../middleware/cookieForward');
 
 const router = express.Router();
 const API_URL = process.env.API_URL || 'http://localhost:3001';
 const upload = multer();
 
-// Special handler for file uploads
 router.post('/api/upload', upload.array('attachments', 5), async (req, res) => {
   try {
     const formData = new FormData();
@@ -43,6 +44,48 @@ router.post('/api/upload', upload.array('attachments', 5), async (req, res) => {
     const data = error.response?.data || { error: 'Upload proxy error' };
     
     res.status(status).json(data);
+  }
+});
+
+router.get('/api/posts/html', async (req, res) => {
+  try {
+    const axiosConfig = getAxiosConfig(req);
+    const response = await axios.get(`${API_URL}/api/posts`, axiosConfig);
+    const posts = response.data.posts || [];
+    
+    if (posts.length === 0) {
+      return res.send('<div class="p-4 text-center text-gray-500">No posts to show</div>');
+    }
+    
+    const templatePath = path.join(__dirname, '../components/postTemplate.ejs');
+    const htmlPromises = posts.map(post => ejs.renderFile(templatePath, { post }));
+    const htmlParts = await Promise.all(htmlPromises);
+    
+    res.send(htmlParts.join(''));
+  } catch (error) {
+    console.error('Error rendering posts:', error);
+    res.status(500).send('<div class="p-4 text-center text-gray-500">Failed to load posts</div>');
+  }
+});
+
+router.get('/api/posts/followed/html', async (req, res) => {
+  try {
+    const axiosConfig = getAxiosConfig(req);
+    const response = await axios.get(`${API_URL}/api/posts/followed`, axiosConfig);
+    const posts = response.data.posts || [];
+    
+    if (posts.length === 0) {
+      return res.send('<div class="p-4 text-center text-gray-500">No posts from followed users</div>');
+    }
+    
+    const templatePath = path.join(__dirname, '../components/postTemplate.ejs');
+    const htmlPromises = posts.map(post => ejs.renderFile(templatePath, { post }));
+    const htmlParts = await Promise.all(htmlPromises);
+    
+    res.send(htmlParts.join(''));
+  } catch (error) {
+    console.error('Error rendering followed posts:', error);
+    res.status(500).send('<div class="p-4 text-center text-gray-500">Failed to load posts</div>');
   }
 });
 
