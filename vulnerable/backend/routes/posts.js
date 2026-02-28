@@ -1,40 +1,128 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
-const authMiddleware = require('../middleware/auth');
+const { authMiddleware, optionalAuth } = require('../middleware/auth');
+const { enrichPosts } = require('../utils/postHelpers');
+const { PAGINATION, HTTP_STATUS } = require('../config/constants');
+const { validatePostInput, validatePaginationParams, ValidationError } = require('../validators/postValidator');
 
-router.get('/',authMiddleware, async (req, res) => {
+router.get('/search', authMiddleware, async (req, res) => {
+  const { q, type } = req.query;
+  
+  if (!q) {
+    return res.json({ posts: [], users: [] });
+  }
+  
   try {
-    const result = await pool.query('SELECT * FROM posts WHERE root_id IS NULL ORDER BY created_at DESC');
-    for (let post of result.rows) {
-        const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [post.user_id]);
-        post.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
-        post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
-        post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
-        post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
-        post.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
-        post.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
+    let postsResult = { rows: [] };
+    let usersResult = { rows: [] };
+
+    if (type === 'people') {
+      usersResult = await pool.query(
+        `SELECT id, username, profile_image, bio 
+         FROM users 
+         WHERE username ILIKE $1 OR bio ILIKE $1 
+         ORDER BY username 
+         LIMIT $2`,
+        [`%${q}%`, PAGINATION.SEARCH_LIMIT]
+      );
+    } else if (type === 'media') {
+      postsResult = await pool.query(
+        `SELECT p.* FROM posts p 
+         WHERE p.content ILIKE $1 AND p.root_id IS NULL 
+         AND array_length(p.attachments, 1) > 0
+         ORDER BY p.created_at DESC 
+         LIMIT $2`,
+        [`%${q}%`, PAGINATION.SEARCH_LIMIT]
+      );
+    } else if (type === 'top') {
+      postsResult = await pool.query(
+        `SELECT p.*, 
+                (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes_count
+         FROM posts p 
+         WHERE p.content ILIKE $1 AND p.root_id IS NULL 
+         ORDER BY likes_count DESC, p.created_at DESC 
+         LIMIT $2`,
+        [`%${q}%`, PAGINATION.SEARCH_LIMIT]
+      );
+
+      usersResult = await pool.query(
+        `SELECT id, username, profile_image, email, bio
+         FROM users 
+         WHERE (username ILIKE $1 OR bio ILIKE $1) AND id != $2
+         ORDER BY username 
+         LIMIT $3`,
+        [`%${q}%`, req.user.userId, PAGINATION.SEARCH_USERS_LIMIT]
+      );
+    } else {
+      postsResult = await pool.query(
+        `SELECT p.* FROM posts p 
+         WHERE p.content ILIKE $1 AND p.root_id IS NULL 
+         ORDER BY p.created_at DESC 
+         LIMIT $2`,
+        [`%${q}%`, PAGINATION.SEARCH_LIMIT]
+      );
     }
-    res.json({posts: result.rows });
+    
+    const enrichedPosts = await enrichPosts(postsResult.rows, req.user?.userId);
+    
+    res.json({ 
+      posts: enrichedPosts,
+      users: usersResult.rows
+    });
+  } catch (error) {
+    console.error('Error searching:', error);
+    if (error instanceof ValidationError) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
+    }
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    const { page, limit } = validatePaginationParams(req.query);
+    const offset = (page - 1) * limit;
+    
+    const result = await pool.query(
+      'SELECT * FROM posts WHERE root_id IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      [limit, offset]
+    );
+    
+    const enrichedPosts = await enrichPosts(result.rows, req.user?.userId);
+    
+    res.json({ posts: enrichedPosts });
   } catch (error) {
     console.error('Error fetching posts:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    if (error instanceof ValidationError) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
+    }
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
   }
 });
 router.post('/', authMiddleware, async (req, res) => {
     try {
         const { content, attachment_urls, root_id, parent_id } = req.body;
+        
+        validatePostInput(req.body);
+        
         const sql = 'INSERT INTO posts (user_id, content, attachments, root_id, parent_id) VALUES ($1, $2, $3, $4, $5) RETURNING *';
         const insertResult = await pool.query(sql, [req.user.userId, content, attachment_urls || [], root_id || null, parent_id || null]);
-        res.status(201).json({ post: insertResult.rows[0] });
+        res.status(HTTP_STATUS.CREATED).json({ post: insertResult.rows[0] });
     } catch (error) {
         console.error('Error creating post:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error instanceof ValidationError) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
+        }
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
 
 router.get('/user', authMiddleware, async (req, res) => {
     try {
+        const { page, limit } = validatePaginationParams(req.query);
+        const offset = (page - 1) * limit;
+        
         const result = await pool.query(`
             SELECT p.*, 
                    CASE WHEN r.user_id IS NOT NULL THEN true ELSE false END as is_repost,
@@ -44,44 +132,47 @@ router.get('/user', authMiddleware, async (req, res) => {
             WHERE (p.user_id = $1 OR r.user_id = $1) 
               AND p.root_id IS NULL
             ORDER BY COALESCE(r.created_at, p.created_at) DESC
-        `, [req.user.userId]);
+            LIMIT $2 OFFSET $3
+        `, [req.user.userId, limit, offset]);
         
-        for (let post of result.rows) {
-            const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [post.user_id]);
-            post.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
-            post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
-            post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
-            post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
-            post.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
-            post.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
-        }
-        res.json({ posts: result.rows });
+        const enrichedPosts = await enrichPosts(result.rows, req.user.userId);
+        
+        res.json({ posts: enrichedPosts });
     } catch (error) {
         console.error('Error fetching user posts:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error instanceof ValidationError) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
+        }
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
-router.get('/user/:id', async (req, res) => {
+router.get('/user/:id', optionalAuth, async (req, res) => {
     const userId = req.params.id;
     try {
-        const result = await pool.query('SELECT * FROM posts WHERE user_id = $1 AND root_id IS NULL ORDER BY created_at DESC', [userId]);
-        for (let post of result.rows) {
-            const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [post.user_id]);
-            post.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
-            post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
-            post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
-            post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
-            post.liked_by_user = false;
-            post.reposted_by_user = false;
-        }
-        res.json({ posts: result.rows });
+        const { page, limit } = validatePaginationParams(req.query);
+        const offset = (page - 1) * limit;
+
+        const result = await pool.query(
+            'SELECT * FROM posts WHERE user_id = $1 AND root_id IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+            [userId, limit, offset]
+        );
+
+        const enrichedPosts = await enrichPosts(result.rows, req.user?.userId);
+
+        res.json({ posts: enrichedPosts });
     } catch (error) {
         console.error('Error fetching user posts:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error instanceof ValidationError) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
+        }
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
 router.get('/followed', authMiddleware, async (req, res) => {
     try {
+        const { page, limit } = validatePaginationParams(req.query);
+        const offset = (page - 1) * limit;
+        
         const result = await pool.query(`
             SELECT p.*, 
                    CASE WHEN r.user_id IS NOT NULL THEN true ELSE false END as is_repost,
@@ -91,21 +182,18 @@ router.get('/followed', authMiddleware, async (req, res) => {
             WHERE (p.user_id IN (SELECT following_id FROM followers WHERE follower_id = $1) OR r.user_id = $1) 
               AND p.root_id IS NULL
             ORDER BY COALESCE(r.created_at, p.created_at) DESC
-        `, [req.user.userId]);
+            LIMIT $2 OFFSET $3
+        `, [req.user.userId, limit, offset]);
         
-        for (let post of result.rows) {
-            const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [post.user_id]);
-            post.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
-            post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
-            post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
-            post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
-            post.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
-            post.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
-        }
-        res.json({ posts: result.rows });
+        const enrichedPosts = await enrichPosts(result.rows, req.user.userId);
+        
+        res.json({ posts: enrichedPosts });
     } catch (error) {
         console.error('Error fetching followed posts:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error instanceof ValidationError) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
+        }
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
 router.get('/:id', authMiddleware, async (req, res) => {
@@ -113,20 +201,15 @@ router.get('/:id', authMiddleware, async (req, res) => {
     try {
         const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
         if (postResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Post not found' });
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
         }
-        const post = postResult.rows[0];
-        const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [post.user_id]);
-        post.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
-        post.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [post.id])).rows[0].count;
-        post.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [post.id])).rows[0].count;
-        post.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [post.id])).rows[0].count;
-        post.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
-        post.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, post.id])).rows.length > 0 : false;
-        res.json({ post });
+        
+        const enrichedPosts = await enrichPosts(postResult.rows, req.user?.userId);
+        
+        res.json({ post: enrichedPosts[0] });
     } catch (error) {
         console.error('Error fetching post:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
 router.delete('/:id', authMiddleware, async (req, res) => {
@@ -134,39 +217,44 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
         if (postResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Post not found' });
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
         }
         const post = postResult.rows[0];
         if (post.user_id !== req.user.userId) {
-            return res.status(403).json({ error: 'Forbidden' });
+            return res.status(HTTP_STATUS.FORBIDDEN).json({ error: 'Forbidden' });
         }
         await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
         res.json({ message: 'Post deleted successfully' });
     } catch (error) {
         console.error('Error deleting post:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
 router.put('/:id', authMiddleware, async (req, res) => {
     const postId = req.params.id;
     const { content, attachment_urls, root_id, parent_id } = req.body;
     try {
+        validatePostInput(req.body);
+        
         const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
         if (postResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Post not found' });
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
         }
         const post = postResult.rows[0];
         if (post.user_id !== req.user.userId) {
-            return res.status(403).json({ error: 'Forbidden' });
+            return res.status(HTTP_STATUS.FORBIDDEN).json({ error: 'Forbidden' });
         }
-        const updateResult = await pool.query('UPDATE posts SET content = $1, attachment_url = $2, root_id = $3, parent_id = $4 WHERE id = $5 RETURNING *', [content, attachment_urls && attachment_urls.length > 0 ? attachment_urls[0] : null, root_id || null, parent_id || null, postId]);
+        const updateResult = await pool.query('UPDATE posts SET content = $1, attachments = $2, root_id = $3, parent_id = $4 WHERE id = $5 RETURNING *', [content, attachment_urls || [], root_id || null, parent_id || null, postId]);
         res.json({ post: updateResult.rows[0] });
     } catch (error) {
         console.error('Error updating post:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error instanceof ValidationError) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
+        }
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
-router.get('/:id/like', authMiddleware, async (req, res) => {
+router.post('/:id/like', authMiddleware, async (req, res) => {
     const postId = req.params.id;
     try {
         const likeCheck = await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, postId]);
@@ -179,10 +267,10 @@ router.get('/:id/like', authMiddleware, async (req, res) => {
         }
     } catch (error) {
         console.error('Error liking/unliking post:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
-router.get('/:id/repost', authMiddleware, async (req, res) => {
+router.post('/:id/repost', authMiddleware, async (req, res) => {
     const postId = req.params.id;
     try {
         const repostCheck = await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, postId]);
@@ -195,26 +283,29 @@ router.get('/:id/repost', authMiddleware, async (req, res) => {
         }
     } catch (error) {
         console.error('Error reposting/unreposting post:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
 router.get('/:id/comments', authMiddleware, async (req, res) => {
     const postId = req.params.id;
     try {
-        const commentsResult = await pool.query('SELECT * FROM posts WHERE parent_id = $1 ORDER BY created_at DESC', [postId]);
-        for (let comment of commentsResult.rows) {
-            const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [comment.user_id]);
-            comment.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
-            comment.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [comment.id])).rows[0].count;
-            comment.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [comment.id])).rows[0].count;
-            comment.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [comment.id])).rows[0].count;
-            comment.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, comment.id])).rows.length > 0 : false;
-            comment.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, comment.id])).rows.length > 0 : false;
-        }
-        res.json({ comments: commentsResult.rows });
+        const { page, limit } = validatePaginationParams(req.query);
+        const offset = (page - 1) * limit;
+        
+        const commentsResult = await pool.query(
+            'SELECT * FROM posts WHERE parent_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+            [postId, limit, offset]
+        );
+        
+        const enrichedComments = await enrichPosts(commentsResult.rows, req.user?.userId);
+        
+        res.json({ comments: enrichedComments });
     } catch (error) {
         console.error('Error fetching comments:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (error instanceof ValidationError) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
+        }
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
 router.get('/:id/thread', authMiddleware, async (req, res) => {
@@ -222,33 +313,26 @@ router.get('/:id/thread', authMiddleware, async (req, res) => {
     try {
         const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
         if (postResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Post not found' });
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
         }
         
-        const thread = [];
-        let currentPost = postResult.rows[0];
+        const threadResult = await pool.query(`
+            WITH RECURSIVE ancestors AS (
+                SELECT p.* FROM posts p
+                JOIN posts child ON child.parent_id = p.id AND child.id = $1
+                UNION ALL
+                SELECT p.* FROM posts p
+                JOIN ancestors a ON a.parent_id = p.id
+            )
+            SELECT * FROM ancestors ORDER BY created_at ASC
+        `, [postId]);
+
+        const enrichedThread = await enrichPosts(threadResult.rows, req.user?.userId);
         
-        while (currentPost.parent_id) {
-            const parentResult = await pool.query('SELECT * FROM posts WHERE id = $1', [currentPost.parent_id]);
-            if (parentResult.rows.length === 0) break;
-            
-            const parentPost = parentResult.rows[0];
-            const userResult = await pool.query('SELECT id, username, email, profile_image, background_image FROM users WHERE id = $1', [parentPost.user_id]);
-            parentPost.author = userResult.rows[0] || { id: null, username: 'Unknown', email: '', profile_image: '', background_image: null };
-            parentPost.comments_count = (await pool.query('SELECT COUNT(*) FROM posts WHERE root_id = $1', [parentPost.id])).rows[0].count;
-            parentPost.likes_count = (await pool.query('SELECT COUNT(*) FROM likes WHERE post_id = $1', [parentPost.id])).rows[0].count;
-            parentPost.reposts_count = (await pool.query('SELECT COUNT(*) FROM reposts WHERE post_id = $1', [parentPost.id])).rows[0].count;
-            parentPost.liked_by_user = req.user ? (await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, parentPost.id])).rows.length > 0 : false;
-            parentPost.reposted_by_user = req.user ? (await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, parentPost.id])).rows.length > 0 : false;
-            
-            thread.unshift(parentPost);
-            currentPost = parentPost;
-        }
-        
-        res.json({ thread });
+        res.json({ thread: enrichedThread });
     } catch (error) {
         console.error('Error fetching thread:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
 module.exports = router;

@@ -1,9 +1,9 @@
 <div class="p-4 border-stone-700 border-b-1 flex flex-row gap-4 w-full">
     <img class="size-10 rounded-full" id="profile-img" src="<%= user.profile_image || 'https://via.placeholder.com/40' %>" alt="Profile">
-    <form id="post-form" class="flex flex-col gap-3 w-full" rootid="<% if (post) { %><%= post.root_id || post.id %><% } else { %>null<% } %>"
-        parentid="<% if (post) { %><%= post.id %><% } else { %>null<% } %>">
+    <form id="post-form" class="flex flex-col gap-3 w-full" data-root-id="<% if (post) { %><%= post.root_id || post.id %><% } else { %>null<% } %>"
+        data-parent-id="<% if (post) { %><%= post.id %><% } else { %>null<% } %>">
         <input type="file" id="attachment-input" class="hidden" accept="image/*,video/*" multiple>
-        <textarea name="content" placeholder="Post your reply" class="p-2 bg-black text-white focus:outline-none h-24" required></textarea>
+        <textarea name="content" placeholder="<%= post ? 'Post your reply' : 'What\'s happening?' %>" class="p-2 bg-black text-white focus:outline-none h-24" required></textarea>
         <div id="attachments-preview" class="flex gap-2 flex-wrap"></div>
         <div class="flex flex-row justify-between items-center w-full">
             <button type="button" id="add-attachment-btn">

@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!postForm) return;
   
   let selectedFiles = [];
+  let objectURLs = [];
   
   addAttachmentBtn?.addEventListener('click', () => {
     attachmentInput.click();
@@ -21,12 +22,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   function renderAttachmentsPreviews() {
+    objectURLs.forEach(url => URL.revokeObjectURL(url));
+    objectURLs = [];
+    
     attachmentsPreview.innerHTML = '';
     selectedFiles.forEach((file, index) => {
       const preview = document.createElement('div');
       preview.className = 'relative';
+      const objectURL = URL.createObjectURL(file);
+      objectURLs.push(objectURL);
       preview.innerHTML = `
-        <img src="${URL.createObjectURL(file)}" class="h-20 w-20 object-cover rounded" />
+        <img src="${objectURL}" class="h-20 w-20 object-cover rounded" />
         <button type="button" class="absolute top-0 right-0 bg-red-500 text-white rounded-full size-5 flex items-center justify-center text-xs" data-remove-index="${index}">×</button>
       `;
       attachmentsPreview.appendChild(preview);
@@ -41,12 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
+  function cleanupObjectURLs() {
+    objectURLs.forEach(url => URL.revokeObjectURL(url));
+    objectURLs = [];
+  }
+  
   postForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const content = postForm.querySelector('textarea[name="content"]').value;
-    const rootId = postForm.getAttribute('rootid');
-    const parentId = postForm.getAttribute('parentid');
+    const root_id = postForm.getAttribute('data-root-id');
+    const parentId = postForm.getAttribute('data-parent-id');
     
     try {
       let attachmentUrls = [];
@@ -72,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const postData = {
         content,
         attachment_urls: attachmentUrls,
-        root_id: rootId !== 'null' ? parseInt(rootId) : null,
+        root_id: root_id !== 'null' ? parseInt(root_id) : null,
         parent_id: parentId !== 'null' ? parseInt(parentId) : null
       };
       
@@ -89,12 +100,15 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const data = await response.json();
       
+      cleanupObjectURLs();
+      selectedFiles = [];
       
       window.location.href = `/post/${data.post.id}`;
       
       
     } catch (error) {
       console.error('Post creation error:', error);
+      cleanupObjectURLs();
       alert('Failed to create post. Please try again.');
     }
   });
@@ -143,7 +157,7 @@ async function handleLike(postId, button) {
   
   try {
     const response = await fetch(`${window.API_URL}/api/posts/${postId}/like`, {
-      method: 'GET',
+      method: 'POST',
       credentials: 'include'
     });
     
@@ -185,7 +199,7 @@ async function handleRepost(postId, button) {
   
   try {
     const response = await fetch(`${window.API_URL}/api/posts/${postId}/repost`, {
-      method: 'GET',
+      method: 'POST',
       credentials: 'include'
     });
     
@@ -303,32 +317,30 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('click', async (e) => {
-  const buttonText = e.target.textContent?.trim();
-  if (e.target.tagName === 'BUTTON' && (buttonText === 'Follow' || buttonText === 'Following')) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Skip if this is the #follow-btn (already handled above)
-    if (e.target.id === 'follow-btn') return;
-    
-    const userId = e.target.getAttribute('data-user-id');
-    if (!userId) return;
-    
-    await handleFollow(userId, e.target);
-  }
+  if (e.target.tagName !== 'BUTTON' || !e.target.dataset.userId) return;
+  if (e.target.id === 'follow-btn') return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  const userId = e.target.dataset.userId;
+  await handleFollow(userId, e.target);
 });
 
 async function handleFollow(userId, button) {
-  const isFollowing = button.textContent.trim() === 'Following';
+  const isFollowing = button.dataset.following === 'true';
   const originalText = button.textContent;
   const originalClasses = button.className;
-  
+  const originalFollowing = button.dataset.following;
+
   if (isFollowing) {
     button.textContent = 'Follow';
+    button.dataset.following = 'false';
     button.classList.remove('bg-green-500', 'bg-green-600', 'text-white', 'hover:bg-green-600');
     button.classList.add('bg-white', 'text-black', 'hover:bg-gray-200');
   } else {
     button.textContent = 'Following';
+    button.dataset.following = 'true';
     button.classList.remove('bg-white', 'text-black', 'hover:bg-gray-200');
     button.classList.add('bg-green-500', 'text-white', 'hover:bg-green-600');
   }
@@ -349,10 +361,12 @@ async function handleFollow(userId, button) {
       if (btn === button) return;
       if (isFollowing) {
         btn.textContent = 'Follow';
+        btn.dataset.following = 'false';
         btn.classList.remove('bg-green-500', 'bg-green-600', 'text-white', 'hover:bg-green-600');
         btn.classList.add('bg-white', 'text-black', 'hover:bg-gray-200');
       } else {
         btn.textContent = 'Following';
+        btn.dataset.following = 'true';
         btn.classList.remove('bg-white', 'text-black', 'hover:bg-gray-200');
         btn.classList.add('bg-green-500', 'text-white', 'hover:bg-green-600');
       }
@@ -362,6 +376,7 @@ async function handleFollow(userId, button) {
     console.error('Follow error:', error);
     button.textContent = originalText;
     button.className = originalClasses;
+    button.dataset.following = originalFollowing;
     alert('Failed to update follow status');
   }
 }

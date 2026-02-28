@@ -165,4 +165,60 @@ router.get('/profile/:id', async (req, res) => {
     });
   }
 });
+router.get('/explore', async (req, res) => {
+  const searchQuery = req.query.q || req.query.search || '';
+  const searchType = req.query.type || 'top';
+  
+  try {
+    const axiosConfig = getAxiosConfig(req);
+    if (!req.cookies || !req.cookies.auth) {
+      return res.redirect('/login');
+    }
+    
+    let results = null;
+    if (searchQuery) {
+      try {
+        const searchResponse = await axios.get(
+          `${API_URL}/api/posts/search?q=${encodeURIComponent(searchQuery)}&type=${encodeURIComponent(searchType)}`, 
+          axiosConfig
+        );
+        results = searchResponse.data;
+      } catch (err) {
+        console.error('Search error:', err.message);
+        results = { posts: [], users: [] };
+      }
+    }
+    
+    const [userResponse, suggestionsResponse] = await Promise.all([
+      axios.get(`${API_URL}/api/users/profile`, axiosConfig).catch(() => null),
+      axios.get(`${API_URL}/api/users/suggestions`, axiosConfig).catch(() => null)
+    ]);
+    
+    res.render('layout', {
+      page: 'explore.ejs',
+      results: results,
+      searchQuery: searchQuery,
+      searchType: searchType,
+      user: userResponse?.data?.user || null,
+      suggestions: suggestionsResponse?.data?.suggestions || []
+    });
+
+  } catch (error) {
+    console.error('Error loading explore page:', error.message);
+
+    if (error.response?.status === 401) {
+      return res.redirect('/login');
+    }
+
+    res.render('layout', {
+      page: 'explore.ejs',
+      results: null,
+      searchQuery: '',
+      searchType: 'latest',
+      user: null,
+      suggestions: [],
+      error: 'Failed to load data'
+    });
+  }
+});
 module.exports = router;

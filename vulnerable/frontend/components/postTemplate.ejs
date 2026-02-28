@@ -16,7 +16,7 @@
             <div class="flex flex-row items-center gap-2 w-full">
                 <a href="/profile/<%- post.author.id %>" class="font-bold hover:underline"><%- post.author.username %></a>
                 <p class="text-gray-500">@<%- post.author.email %></p>
-                <p class="text-gray-500">· <%= new Date(post.created_at).toLocaleString() %></p>
+                <p class="text-gray-500">· <time datetime="<%= new Date(post.created_at).toISOString() %>" data-date="<%= post.created_at %>"><%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></time></p>
                 <button class="action-btn flex items-center gap-1 hover:text-blue-500 transition-colors ml-auto" 
                         data-action="more" 
                         data-post-id="<%- post.id %>">
@@ -26,13 +26,48 @@
             <a href="/post/<%- post.id %>" class="mt-2 block">
                 <p><%- post.content %></p>
                 <% if (post.attachments && post.attachments.length > 0) { %>
-                    <div class="grid gap-2 mt-2">
-                        <% post.attachments.forEach(attachment => { %>
-                            <img class="max-h-60 rounded-lg" 
-                                src="<%- attachment %>" 
+                    <% if (post.attachments.length === 1) { %>
+                        <div class="mt-2">
+                            <img class="w-full max-h-96 object-cover rounded-lg" 
+                                src="<%- post.attachments[0] %>" 
                                 alt="Attachment">
-                        <% }); %>
-                    </div>
+                        </div>
+                    <% } else if (post.attachments.length === 2) { %>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <% post.attachments.forEach(attachment => { %>
+                                <img class="w-full h-60 object-cover rounded-lg" 
+                                    src="<%- attachment %>" 
+                                    alt="Attachment">
+                            <% }); %>
+                        </div>
+                    <% } else if (post.attachments.length === 3) { %>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <img class="col-span-2 w-full h-60 object-cover rounded-lg" 
+                                src="<%- post.attachments[0] %>" 
+                                alt="Attachment">
+                            <img class="w-full h-40 object-cover rounded-lg" 
+                                src="<%- post.attachments[1] %>" 
+                                alt="Attachment">
+                            <img class="w-full h-40 object-cover rounded-lg" 
+                                src="<%- post.attachments[2] %>" 
+                                alt="Attachment">
+                        </div>
+                    <% } else { %>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <% post.attachments.slice(0, 4).forEach((attachment, index) => { %>
+                                <div class="relative">
+                                    <img class="w-full h-40 object-cover rounded-lg" 
+                                        src="<%- attachment %>" 
+                                        alt="Attachment">
+                                    <% if (index === 3 && post.attachments.length > 4) { %>
+                                        <div class="absolute inset-0 bg-black bg-opacity-60 rounded-lg flex items-center justify-center">
+                                            <span class="text-white text-2xl font-bold">+<%- post.attachments.length - 4 %></span>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } %>
                 <% } %>
             </a>
             <div class="flex flex-row gap-5 mt-2 text-gray-500 justify-between w-5/7">

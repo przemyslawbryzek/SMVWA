@@ -1,0 +1,55 @@
+<div class="flex flex-col gap-5 items-center fixed top-0 w-3/7 z-10 bg-black">
+    <form method="GET" action="/explore" class="flex flex-row w-full">
+        <a href="/" class="font-bold p-2 rounded-full hover:bg-stone-900">←</a>
+        <div class="relative mx-4 w-full">
+            <img class="size-5 absolute left-3 top-1/2 transform -translate-y-1/2" src="https://img.icons8.com/?size=100&id=7695&format=png&color=FFFFFF">
+            <input type="text" name="q" placeholder="Search" value="<%- searchQuery || '' %>" class="p-2 pl-10 w-full rounded-full bg-black border border-stone-700 focus:outline-none focus:border-blue-500">
+            <input type="hidden" name="type" value="<%- searchType || 'latest' %>">
+        </div>
+    </form>
+    <div class="flex flex-row justify-between h-15 border-stone-700 border-b-1 w-full">
+        <a href="/explore?q=<%- encodeURIComponent(searchQuery || '') %>&type=top" 
+           class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900 cursor-pointer <%= searchType === 'top' ? 'border-b-2 border-blue-500' : '' %>">
+            Top
+        </a>
+        <a href="/explore?q=<%- encodeURIComponent(searchQuery || '') %>&type=latest" 
+           class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900 cursor-pointer <%= searchType === 'latest' || !searchType ? 'border-b-2 border-blue-500' : '' %>">
+            Latest
+        </a>
+        <a href="/explore?q=<%- encodeURIComponent(searchQuery || '') %>&type=people" 
+           class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900 cursor-pointer <%= searchType === 'people' ? 'border-b-2 border-blue-500' : '' %>">
+            People
+        </a>
+        <a href="/explore?q=<%- encodeURIComponent(searchQuery || '') %>&type=media" 
+           class="w-1/2 h-full flex justify-center items-center hover:bg-stone-900 cursor-pointer <%= searchType === 'media' ? 'border-b-2 border-blue-500' : '' %>">
+            Media
+        </a>
+    </div>
+</div>
+
+<div class="mt-32 w-full">
+    <% if (results === null) { %>
+        <div class="p-4 text-center text-gray-500">Search for something to see results</div>
+    <% } else { %>
+        <% if (results.users && results.users.length > 0) { %>
+            <div class="border-b border-stone-700 pb-4 px-4">
+                <h2 class="text-xl font-bold">People</h2>
+                <% results.users.forEach(user => { %>
+                    <%- include('../../components/profileBar.ejs', { User: user }) %>
+                <% }); %>
+            </div>
+        <% } %>
+        
+        <% if (results.posts && results.posts.length > 0) { %>
+            <div>
+                <h2 class="text-xl font-bold p-4">Posts</h2>
+                <%- include('../../components/postsList', { posts: results.posts, containerId: 'search-posts-container' }) %>
+            </div>
+        <% } %>
+        
+        <% if ((!results.users || results.users.length === 0) && (!results.posts || results.posts.length === 0)) { %>
+            <div class="p-4 text-center text-gray-500">No results found</div>
+        <% } %>
+    <% } %>
+</div>
+    

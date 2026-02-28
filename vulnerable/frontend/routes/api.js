@@ -47,45 +47,74 @@ router.post('/api/upload', upload.array('attachments', 5), async (req, res) => {
   }
 });
 
+async function renderPostsAsJson(posts, limit, res) {
+  const hasMore = posts.length > limit;
+  const postsToRender = hasMore ? posts.slice(0, limit) : posts;
+  if (postsToRender.length === 0) {
+    return res.json({ html: '', hasMore: false });
+  }
+  const templatePath = path.join(__dirname, '../components/postTemplate.ejs');
+  const htmlParts = await Promise.all(postsToRender.map(post => ejs.renderFile(templatePath, { post })));
+  res.json({ html: htmlParts.join(''), hasMore });
+}
+
 router.get('/api/posts/html', async (req, res) => {
   try {
     const axiosConfig = getAxiosConfig(req);
-    const response = await axios.get(`${API_URL}/api/posts`, axiosConfig);
-    const posts = response.data.posts || [];
-    
-    if (posts.length === 0) {
-      return res.send('<div class="p-4 text-center text-gray-500">No posts to show</div>');
-    }
-    
-    const templatePath = path.join(__dirname, '../components/postTemplate.ejs');
-    const htmlPromises = posts.map(post => ejs.renderFile(templatePath, { post }));
-    const htmlParts = await Promise.all(htmlPromises);
-    
-    res.send(htmlParts.join(''));
+    const limit = parseInt(req.query.limit) || 20;
+    const response = await axios.get(`${API_URL}/api/posts`, {
+      ...axiosConfig,
+      params: { page: req.query.page || 1, limit: limit + 1 }
+    });
+    await renderPostsAsJson(response.data.posts || [], limit, res);
   } catch (error) {
     console.error('Error rendering posts:', error);
-    res.status(500).send('<div class="p-4 text-center text-gray-500">Failed to load posts</div>');
+    res.status(500).json({ html: '', hasMore: false });
   }
 });
 
 router.get('/api/posts/followed/html', async (req, res) => {
   try {
     const axiosConfig = getAxiosConfig(req);
-    const response = await axios.get(`${API_URL}/api/posts/followed`, axiosConfig);
-    const posts = response.data.posts || [];
-    
-    if (posts.length === 0) {
-      return res.send('<div class="p-4 text-center text-gray-500">No posts from followed users</div>');
-    }
-    
-    const templatePath = path.join(__dirname, '../components/postTemplate.ejs');
-    const htmlPromises = posts.map(post => ejs.renderFile(templatePath, { post }));
-    const htmlParts = await Promise.all(htmlPromises);
-    
-    res.send(htmlParts.join(''));
+    const limit = parseInt(req.query.limit) || 20;
+    const response = await axios.get(`${API_URL}/api/posts/followed`, {
+      ...axiosConfig,
+      params: { page: req.query.page || 1, limit: limit + 1 }
+    });
+    await renderPostsAsJson(response.data.posts || [], limit, res);
   } catch (error) {
     console.error('Error rendering followed posts:', error);
-    res.status(500).send('<div class="p-4 text-center text-gray-500">Failed to load posts</div>');
+    res.status(500).json({ html: '', hasMore: false });
+  }
+});
+
+router.get('/api/posts/user/html', async (req, res) => {
+  try {
+    const axiosConfig = getAxiosConfig(req);
+    const limit = parseInt(req.query.limit) || 20;
+    const response = await axios.get(`${API_URL}/api/posts/user`, {
+      ...axiosConfig,
+      params: { page: req.query.page || 1, limit: limit + 1 }
+    });
+    await renderPostsAsJson(response.data.posts || [], limit, res);
+  } catch (error) {
+    console.error('Error rendering user posts:', error);
+    res.status(500).json({ html: '', hasMore: false });
+  }
+});
+
+router.get('/api/posts/user/:id/html', async (req, res) => {
+  try {
+    const axiosConfig = getAxiosConfig(req);
+    const limit = parseInt(req.query.limit) || 20;
+    const response = await axios.get(`${API_URL}/api/posts/user/${req.params.id}`, {
+      ...axiosConfig,
+      params: { page: req.query.page || 1, limit: limit + 1 }
+    });
+    await renderPostsAsJson(response.data.posts || [], limit, res);
+  } catch (error) {
+    console.error('Error rendering user posts:', error);
+    res.status(500).json({ html: '', hasMore: false });
   }
 });
 
