@@ -3,14 +3,16 @@ const axios = require('axios');
 const { getAxiosConfig } = require('../middleware/cookieForward');
 
 const router = express.Router();
-const API_URL = process.env.API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.API_URL || 'http://localhost:3001';
 
-router.get('/', async (req, res) => {
+function requireAuth(req, res, next) {
+  if (!req.cookies?.auth) return res.redirect('/login');
+  next();
+}
+
+router.get('/', requireAuth, async (req, res) => {
   try {
     const axiosConfig = getAxiosConfig(req);
-    if (!req.cookies || !req.cookies.auth) {
-      return res.redirect('/login');
-    }
     const [postsResponse, userResponse, suggestionsResponse] = await Promise.all([
       axios.get(`${API_URL}/api/posts`, axiosConfig),
       axios.get(`${API_URL}/api/users/profile`, axiosConfig).catch(() => null),
@@ -39,13 +41,10 @@ router.get('/', async (req, res) => {
     });
   }
 });
-router.get('/post/:id', async (req, res) => {
+router.get('/post/:id', requireAuth, async (req, res) => {
   const postId = req.params.id;
   try {
     const axiosConfig = getAxiosConfig(req);
-    if (!req.cookies || !req.cookies.auth) {
-      return res.redirect('/login');
-    }
     const [postResponse, userResponse, commentsResponse ,threadResponse, suggestionsResponse] = await Promise.all([
       axios.get(`${API_URL}/api/posts/${postId}`, axiosConfig),
       axios.get(`${API_URL}/api/users/profile`, axiosConfig).catch(() => null),
@@ -80,12 +79,9 @@ router.get('/post/:id', async (req, res) => {
     });
   }
 });
-router.get('/profile', async (req, res) => {
+router.get('/profile', requireAuth, async (req, res) => {
   try {
     const axiosConfig = getAxiosConfig(req);
-    if (!req.cookies || !req.cookies.auth) {
-      return res.redirect('/login');
-    }
     const [userResponse, postsResponse, suggestionsResponse] = await Promise.all([
       axios.get(`${API_URL}/api/users/profile`, axiosConfig),
       axios.get(`${API_URL}/api/posts/user`, axiosConfig).catch(() => ({ data: { posts: [] } })),
@@ -165,22 +161,18 @@ router.get('/profile/:id', async (req, res) => {
     });
   }
 });
-router.get('/explore', async (req, res) => {
+router.get('/explore', requireAuth, async (req, res) => {
   const searchQuery = req.query.q || req.query.search || '';
   const searchType = req.query.type || 'top';
   
   try {
     const axiosConfig = getAxiosConfig(req);
-    if (!req.cookies || !req.cookies.auth) {
-      return res.redirect('/login');
-    }
-    
     let results = null;
     if (searchQuery) {
       try {
         const searchResponse = await axios.get(
-          `${API_URL}/api/posts/search?q=${encodeURIComponent(searchQuery)}&type=${encodeURIComponent(searchType)}`, 
-          axiosConfig
+          `${API_URL}/api/posts/search`,
+          { ...axiosConfig, params: { q: searchQuery, type: searchType } }
         );
         results = searchResponse.data;
       } catch (err) {
@@ -219,6 +211,34 @@ router.get('/explore', async (req, res) => {
       suggestions: [],
       error: 'Failed to load data'
     });
+  }
+});
+router.get('/post/:postId/photo/:photoId', requireAuth, async (req, res) => {
+  const postId = req.params.postId;
+  const photoId = parseInt(req.params.photoId, 10);
+  try {
+    const axiosConfig = getAxiosConfig(req);
+    const [postResponse, userResponse, commentsResponse ,threadResponse] = await Promise.all([
+      axios.get(`${API_URL}/api/posts/${postId}`, axiosConfig),
+      axios.get(`${API_URL}/api/users/profile`, axiosConfig).catch(() => null),
+      axios.get(`${API_URL}/api/posts/${postId}/comments`, axiosConfig).catch(() => null),
+      axios.get(`${API_URL}/api/posts/${postId}/thread`, axiosConfig).catch(() => null),
+    ]);
+    res.render('photo', {
+      post: postResponse.data.post,
+      user: userResponse?.data?.user || null,
+      comments: commentsResponse?.data?.comments || [],
+      thread: threadResponse?.data?.thread || [],
+      photoId: photoId
+    });
+  } catch (error) {
+    console.error('Error loading photo page:', error.message);
+
+    if (error.response?.status === 401) {
+      return res.redirect('/login')
+    };
+
+    res.render('photo', { error: 'Failed to load photo' });
   }
 });
 module.exports = router;

@@ -1,4 +1,6 @@
-<div class="flex flex-col hover:bg-stone-900 w-full p-4 border-b border-stone-700">
+<div class="relative flex flex-col hover:bg-stone-900 w-full p-4 border-b border-stone-700 cursor-pointer">
+    <%# Overlay link — covers whole card, navigates to post %>
+    <a href="/post/<%- post.id %>" class="absolute inset-0 z-0" aria-label="View post"></a>
     <% if(post.is_repost) { %>
         <div class="flex items-center gap-1 text-gray-500 mb-1 ml-10">
             <img class="size-4" src="https://img.icons8.com/?size=100&id=GZmx08TD7nCw&format=png&color=808080">
@@ -6,71 +8,82 @@
         </div>
     <% } %>
     <div class="flex flex-row">
-        <a href="/profile/<%- post.author.id %>">
-            <img class="size-10 rounded-full" 
-                src="<%- post.author.profile_image || 'https://via.placeholder.com/40' %>" 
+        <a href="/profile/<%- post.author.id %>" class="relative z-10 size-10 shrink-0">
+            <img class="size-10 rounded-full"
+                src="<%- post.author.profile_image || 'https://via.placeholder.com/40' %>"
                 alt="Profile">
         </a>
         
         <div class="flex flex-col ml-3 w-full">
             <div class="flex flex-row items-center gap-2 w-full">
-                <a href="/profile/<%- post.author.id %>" class="font-bold hover:underline"><%- post.author.username %></a>
+                <a href="/profile/<%- post.author.id %>" class="relative z-10 font-bold hover:underline"><%- post.author.username %></a>
                 <p class="text-gray-500">@<%- post.author.email %></p>
                 <p class="text-gray-500">· <time datetime="<%= new Date(post.created_at).toISOString() %>" data-date="<%= post.created_at %>"><%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></time></p>
-                <button class="action-btn flex items-center gap-1 hover:text-blue-500 transition-colors ml-auto" 
-                        data-action="more" 
-                        data-post-id="<%- post.id %>">
+                <button class="relative z-10 action-btn flex items-center gap-1 hover:text-blue-500 transition-colors ml-auto"
+                        data-action="more"
+                        data-post-id="<%- post.id %>"
+                        data-post-author-id="<%- post.author.id %>">
                     <img class="size-5" src="https://img.icons8.com/?size=100&id=12620&format=png&color=808080">
                 </button>
             </div>
-            <a href="/post/<%- post.id %>" class="mt-2 block">
-                <p><%- post.content %></p>
-                <% if (post.attachments && post.attachments.length > 0) { %>
-                    <% if (post.attachments.length === 1) { %>
-                        <div class="mt-2">
-                            <img class="w-full max-h-96 object-cover rounded-lg" 
-                                src="<%- post.attachments[0] %>" 
+            <p class="mt-2"><%- post.content %></p>
+            <% if (post.attachments && post.attachments.length > 0 && showAttachments) { %>
+                <% if (post.attachments.length === 1) { %>
+                    <div class="mt-2">
+                        <a href="/post/<%- post.id %>/photo/0" class="relative z-10 block">
+                            <img class="w-full max-h-96 object-cover rounded-lg"
+                                src="<%- post.attachments[0] %>"
                                 alt="Attachment">
-                        </div>
-                    <% } else if (post.attachments.length === 2) { %>
-                        <div class="grid grid-cols-2 gap-2 mt-2">
-                            <% post.attachments.forEach(attachment => { %>
-                                <img class="w-full h-60 object-cover rounded-lg" 
-                                    src="<%- attachment %>" 
+                        </a>
+                    </div>
+                <% } else if (post.attachments.length === 2) { %>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <% post.attachments.forEach((attachment, index) => { %>
+                            <a href="/post/<%- post.id %>/photo/<%- index %>" class="relative z-10 block">
+                                <img class="w-full h-60 object-cover rounded-lg"
+                                    src="<%- attachment %>"
                                     alt="Attachment">
-                            <% }); %>
-                        </div>
-                    <% } else if (post.attachments.length === 3) { %>
-                        <div class="grid grid-cols-2 gap-2 mt-2">
-                            <img class="col-span-2 w-full h-60 object-cover rounded-lg" 
-                                src="<%- post.attachments[0] %>" 
+                            </a>
+                        <% }); %>
+                    </div>
+                <% } else if (post.attachments.length === 3) { %>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <a href="/post/<%- post.id %>/photo/0" class="relative z-10 col-span-2 block">
+                            <img class="w-full h-60 object-cover rounded-lg"
+                                src="<%- post.attachments[0] %>"
                                 alt="Attachment">
-                            <img class="w-full h-40 object-cover rounded-lg" 
-                                src="<%- post.attachments[1] %>" 
+                        </a>
+                        <a href="/post/<%- post.id %>/photo/1" class="relative z-10 block">
+                            <img class="w-full h-40 object-cover rounded-lg"
+                                src="<%- post.attachments[1] %>"
                                 alt="Attachment">
-                            <img class="w-full h-40 object-cover rounded-lg" 
-                                src="<%- post.attachments[2] %>" 
+                        </a>
+                        <a href="/post/<%- post.id %>/photo/2" class="relative z-10 block">
+                            <img class="w-full h-40 object-cover rounded-lg"
+                                src="<%- post.attachments[2] %>"
                                 alt="Attachment">
-                        </div>
-                    <% } else { %>
-                        <div class="grid grid-cols-2 gap-2 mt-2">
-                            <% post.attachments.slice(0, 4).forEach((attachment, index) => { %>
+                        </a>
+                    </div>
+                <% } else { %>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <% post.attachments.slice(0, 4).forEach((attachment, index) => { %>
+                            <a href="/post/<%- post.id %>/photo/<%- index %>" class="relative z-10 block">
                                 <div class="relative">
-                                    <img class="w-full h-40 object-cover rounded-lg" 
-                                        src="<%- attachment %>" 
+                                    <img class="w-full h-40 object-cover rounded-lg"
+                                        src="<%- attachment %>"
                                         alt="Attachment">
                                     <% if (index === 3 && post.attachments.length > 4) { %>
-                                        <div class="absolute inset-0 bg-black bg-opacity-60 rounded-lg flex items-center justify-center">
+                                        <div class="absolute inset-0 bg-black bg-opacity-60 rounded-lg flex items-center justify-center pointer-events-none">
                                             <span class="text-white text-2xl font-bold">+<%- post.attachments.length - 4 %></span>
                                         </div>
                                     <% } %>
                                 </div>
-                            <% }); %>
-                        </div>
-                    <% } %>
+                            </a>
+                        <% }); %>
+                    </div>
                 <% } %>
-            </a>
-            <div class="flex flex-row gap-5 mt-2 text-gray-500 justify-between w-5/7">
+            <% } %>
+            <div class="relative z-10 flex flex-row gap-5 mt-2 text-gray-500 justify-between w-5/7">
                 <button class="action-btn flex items-center gap-1 hover:text-blue-500 transition-colors" 
                         data-action="comment" 
                         data-post-id="<%- post.id %>">

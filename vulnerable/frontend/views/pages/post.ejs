@@ -1,11 +1,15 @@
 <%- include('../../components/pageHeader', { title: 'Post', backUrl: '/' }) %>
+<% if (post) { %>
 <div id="thread-container">
     <% thread.forEach(post => { %>
-        <%- include('../../components/postTemplate', { post }) %>
+        <%- include('../../components/postTemplate', { post, showAttachments: true }) %>
     <% }); %>
 </div>
 <div id="post-container">
-    <%- include('../../components/postTemplate', { post }) %>
+    <%- include('../../components/postTemplate', { post, showAttachments: true }) %>
 </div>
 <%- include('../../components/postForm', { user, post }) %>
 <%- include('../../components/postsList', { posts: comments, containerId: 'comments-container' }) %>
+<% } else { %>
+<p class="text-gray-500 p-8 text-center">Post not found or failed to load.</p>
+<% } %>

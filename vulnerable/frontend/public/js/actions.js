@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const addAttachmentBtn = document.getElementById('add-attachment-btn');
   const attachmentsPreview = document.getElementById('attachments-preview');
   
-  if (!postForm) return;
+  if (postForm) {
   
   let selectedFiles = [];
   let objectURLs = [];
@@ -112,6 +112,16 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Failed to create post. Please try again.');
     }
   });
+  }
+
+  const followBtn = document.getElementById('follow-btn');
+  if (followBtn) {
+    followBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const userId = followBtn.getAttribute('data-user-id');
+      await handleFollow(userId, followBtn);
+    });
+  }
 });
 
 document.addEventListener('click', async (e) => {
@@ -227,29 +237,45 @@ function showMoreMenu(postId, button) {
     existing.remove();
     return;
   }
-  
+
+  const currentUser = window.CURRENT_USER;
+  const authorId = Number(button.dataset.postAuthorId);
+  const isOwner = currentUser && currentUser.id === authorId;
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const canModify = isOwner || isAdmin;
+
   const menu = document.createElement('div');
   menu.className = 'more-menu absolute bg-stone-800 border border-stone-700 rounded-lg shadow-lg z-50 min-w-48';
-  menu.style.top = '100%';
-  menu.style.right = '0';
-  
+
   menu.innerHTML = `
     <div class="py-2">
-      <button class="menu-item w-full px-4 py-2 text-left hover:bg-stone-700 text-red-500" 
-              data-menu-action="delete" 
+      ${canModify ? `
+      <button class="menu-item w-full px-4 py-2 text-left hover:bg-stone-700"
+              data-menu-action="edit"
+              data-post-id="${postId}">
+        Edit Post
+      </button>
+      <button class="menu-item w-full px-4 py-2 text-left hover:bg-stone-700 text-red-500"
+              data-menu-action="delete"
               data-post-id="${postId}">
         Delete Post
-      </button>
-      <button class="menu-item w-full px-4 py-2 text-left hover:bg-stone-700" 
-              data-menu-action="share" 
+      </button>` : ''}
+      <button class="menu-item w-full px-4 py-2 text-left hover:bg-stone-700"
+              data-menu-action="share"
               data-post-id="${postId}">
         Copy Link
       </button>
     </div>
   `;
-  
-  button.style.position = 'relative';
-  button.appendChild(menu);
+
+  const postCard = button.closest('[class*="border-b"]') || document.body;
+  postCard.appendChild(menu);
+
+  const btnRect = button.getBoundingClientRect();
+  const cardRect = postCard.getBoundingClientRect();
+  menu.style.top = `${btnRect.bottom - cardRect.top + 4}px`;
+  menu.style.right = `${cardRect.right - btnRect.right}px`;
+
   setTimeout(() => {
     document.addEventListener('click', function closeMenu(e) {
       if (!menu.contains(e.target) && !button.contains(e.target)) {
@@ -268,7 +294,60 @@ document.addEventListener('click', async (e) => {
   const action = item.dataset.menuAction;
   const postId = item.dataset.postId;
   
-  if (action === 'delete') {
+  if (action === 'edit') {
+    document.querySelector('.more-menu')?.remove();
+    const postCard = document.querySelector(`a[href="/post/${postId}"].absolute`)?.parentElement;
+    const contentP = postCard?.querySelector('p.mt-2');
+    if (!contentP) return;
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'w-full bg-stone-800 text-white p-2 rounded-lg border border-stone-600 focus:outline-none focus:border-blue-500 resize-none';
+    textarea.value = contentP.textContent;
+    textarea.rows = 3;
+
+    const editControls = document.createElement('div');
+    editControls.className = 'flex gap-2 mt-2';
+    editControls.innerHTML = `
+      <button class="save-edit-btn px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-sm font-bold">Save</button>
+      <button class="cancel-edit-btn px-4 py-1 bg-stone-700 hover:bg-stone-600 text-white rounded-full text-sm">Cancel</button>
+    `;
+
+    contentP.style.display = 'none';
+    contentP.insertAdjacentElement('afterend', editControls);
+    contentP.insertAdjacentElement('afterend', textarea);
+    textarea.focus();
+
+    editControls.querySelector('.cancel-edit-btn').addEventListener('click', () => {
+      textarea.remove();
+      editControls.remove();
+      contentP.style.display = '';
+    });
+
+    editControls.querySelector('.save-edit-btn').addEventListener('click', async () => {
+      const newContent = textarea.value.trim();
+      if (!newContent) return;
+
+      try {
+        const response = await fetch(`${window.API_URL}/api/posts/${postId}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: newContent })
+        });
+
+        if (!response.ok) throw new Error('Failed to update');
+
+        contentP.textContent = newContent;
+        textarea.remove();
+        editControls.remove();
+        contentP.style.display = '';
+      } catch (error) {
+        console.error('Edit error:', error);
+        alert('Failed to update post');
+      }
+    });
+
+  } else if (action === 'delete') {
     if (!confirm('Are you sure you want to delete this post?')) return;
     
     try {
@@ -301,18 +380,6 @@ document.addEventListener('click', async (e) => {
     }
     
     document.querySelector('.more-menu')?.remove();
-  }
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-  const followBtn = document.getElementById('follow-btn');
-  
-  if (followBtn) {
-    followBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      const userId = followBtn.getAttribute('data-user-id');
-      await handleFollow(userId, followBtn);
-    });
   }
 });
 

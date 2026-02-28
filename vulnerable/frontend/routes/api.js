@@ -54,7 +54,7 @@ async function renderPostsAsJson(posts, limit, res) {
     return res.json({ html: '', hasMore: false });
   }
   const templatePath = path.join(__dirname, '../components/postTemplate.ejs');
-  const htmlParts = await Promise.all(postsToRender.map(post => ejs.renderFile(templatePath, { post })));
+  const htmlParts = await Promise.all(postsToRender.map(post => ejs.renderFile(templatePath, { post, showAttachments: true })));
   res.json({ html: htmlParts.join(''), hasMore });
 }
 

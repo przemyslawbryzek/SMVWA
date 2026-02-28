@@ -64,6 +64,9 @@
     </div>
     <script src="/js/actions.js"></script>
     <script>
+      window.CURRENT_USER = <% if (user) { %>{ id: <%- user.id %>, role: 'user' }<% } else { %>null<% } %>;
+    </script>
+    <script>
       function formatDates(root) {
         (root || document).querySelectorAll('time[data-date]').forEach(el => {
           try {

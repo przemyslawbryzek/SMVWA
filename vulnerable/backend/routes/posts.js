@@ -196,7 +196,7 @@ router.get('/followed', authMiddleware, async (req, res) => {
         res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });
-router.get('/:id', authMiddleware, async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
     const postId = req.params.id;
     try {
         const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
@@ -232,7 +232,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 });
 router.put('/:id', authMiddleware, async (req, res) => {
     const postId = req.params.id;
-    const { content, attachment_urls, root_id, parent_id } = req.body;
+    const { content, attachment_urls } = req.body;
     try {
         validatePostInput(req.body);
         
@@ -244,7 +244,12 @@ router.put('/:id', authMiddleware, async (req, res) => {
         if (post.user_id !== req.user.userId) {
             return res.status(HTTP_STATUS.FORBIDDEN).json({ error: 'Forbidden' });
         }
-        const updateResult = await pool.query('UPDATE posts SET content = $1, attachments = $2, root_id = $3, parent_id = $4 WHERE id = $5 RETURNING *', [content, attachment_urls || [], root_id || null, parent_id || null, postId]);
+        // Only update content and attachments; root_id/parent_id are immutable after creation
+        const attachments = attachment_urls !== undefined ? attachment_urls : post.attachments;
+        const updateResult = await pool.query(
+            'UPDATE posts SET content = $1, attachments = $2 WHERE id = $3 RETURNING *',
+            [content, attachments, postId]
+        );
         res.json({ post: updateResult.rows[0] });
     } catch (error) {
         console.error('Error updating post:', error);
