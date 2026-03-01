@@ -41,7 +41,7 @@ function showMoreMenu(postId, button) {
               data-menu-action="share" data-post-id="${postId}">
         Copy Link
       </button>
-      ${currentUser ? `
+      ${currentUser && currentUser.id !== authorId ? `
       <button class="menu-item w-full px-4 py-2 text-left hover:bg-stone-700 text-orange-400"
               data-menu-action="report-post" data-post-id="${postId}"
               data-user-name="${postAuthor.replace(/"/g, '&quot;')}">
@@ -285,6 +285,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `/api/posts/${_reportEntityId}/report`
         : `/api/users/${_reportEntityId}/report`;
       await window.API.post(path, { reason });
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Report';
       hideReportModal();
       alert('Report submitted successfully.');
     } catch (err) {

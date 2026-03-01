@@ -20,7 +20,7 @@ document.addEventListener('click', async (e) => {
 
 document.addEventListener('click', async (e) => {
   const button = e.target.closest('button[data-user-id]');
-  if (!button || button.id === 'follow-btn') return;
+  if (!button || button.id === 'follow-btn' || button.dataset.menuAction) return;
 
   e.preventDefault();
   e.stopPropagation();
