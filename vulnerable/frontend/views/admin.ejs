@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>SMVWA - Admin Panel</title>
+</head>
+<body class="bg-black text-white">
+    <div class="flex flex-row w-screen h-screen">
+        <nav class="flex flex-col items-center border-stone-700 border-r h-full w-56 shrink-0 gap-1 pt-4">
+            <a href="/" class="mb-4 cursor-pointer p-3 rounded-full font-bold text-2xl">SMVWA</a>
+            <a href="/admin"
+               class="w-full px-6 py-2 hover:bg-stone-900 rounded-lg <%= page === 'users' ? 'text-white font-semibold' : 'text-gray-400' %>">Users</a>
+            <a href="/admin/reported/users"
+               class="w-full px-6 py-2 hover:bg-stone-900 rounded-lg <%= page === 'reported_users' ? 'text-white font-semibold' : 'text-gray-400' %>">Reported Users</a>
+            <a href="/admin/reported/posts"
+               class="w-full px-6 py-2 hover:bg-stone-900 rounded-lg <%= page === 'reported_posts' ? 'text-white font-semibold' : 'text-gray-400' %>">Reported Posts</a>
+        </nav>
+        <main class="flex-1 overflow-y-auto">
+            <%- include(`./admin_pages/${page}`) %>
+        </main>
+    </div>
+    <script src="/js/api.js"></script>
+    <script>
+        window.CURRENT_USER = null;
+        document.addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-admin-action]');
+            if (!btn) return;
+            e.preventDefault();
+            const action = btn.dataset.adminAction;
+            const id = btn.dataset.id;
+            if (action === 'delete-user') {
+                if (!confirm('Delete this user? This cannot be undone.')) return;
+                try {
+                    await window.API.delete(`/api/admin/users/${id}`);
+                    btn.closest('[data-row]').remove();
+                } catch { alert('Failed to delete user'); }
+            } else if (action === 'delete-post') {
+                if (!confirm('Delete this post?')) return;
+                try {
+                    await window.API.delete(`/api/admin/posts/${id}`);
+                    btn.closest('[data-row]').remove();
+                } catch { alert('Failed to delete post'); }
+            } else if (action === 'dismiss-report') {
+                const reportType = btn.dataset.reportType;
+                const endpoint = reportType === 'user'
+                    ? `/api/admin/reported/users/${id}`
+                    : `/api/admin/reported/posts/${id}`;
+                try {
+                    await window.API.delete(endpoint);
+                    btn.closest('[data-row]').remove();
+                } catch { alert('Failed to dismiss report'); }
+            }
+        });
+    </script>
+</body>
+</html>

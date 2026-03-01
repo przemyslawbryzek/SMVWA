@@ -22,7 +22,11 @@
                 <button class="relative z-10 action-btn flex items-center gap-1 hover:text-blue-500 transition-colors ml-auto"
                         data-action="more"
                         data-post-id="<%- post.id %>"
-                        data-post-author-id="<%- post.author.id %>">
+                        data-post-author-id="<%- post.author.id %>"
+                        data-post-author="<%- post.author.username %>"
+                        data-post-author-email="<%- post.author.email %>"
+                        data-post-author-avatar="<%- post.author.profile_image || '' %>"
+                        data-post-content="<%- post.content.replace(/"/g, '&quot;').replace(/\n/g, ' ') %>">
                     <img class="size-5" src="https://img.icons8.com/?size=100&id=12620&format=png&color=808080">
                 </button>
             </div>
@@ -82,6 +86,26 @@
                         <% }); %>
                     </div>
                 <% } %>
+            <% } %>
+            <% if (post.citation) { %>
+                <a href="/post/<%- post.citation.id %>" class="flex flex-col border border-stone-700 rounded-lg p-3 mt-3 z-20 relative">
+                    <div class="flex flex-row items-center gap-2">
+                        <img class="size-5 rounded-full"
+                            src="<%- post.citation.author.profile_image || 'https://via.placeholder.com/40' %>"
+                            alt="Profile">
+                        <p class="font-bold text-sm"><%- post.citation.author.username %></p>
+                        <p class="text-gray-500 text-sm">@<%- post.citation.author.email %></p>
+                        <p class="text-gray-500">· <time datetime="<%= new Date(post.citation.created_at).toISOString() %>" data-date="<%= post.citation.created_at %>"><%= new Date(post.citation.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></time></p>
+                    </div>
+                    <p class="text-sm mt-1"><%- post.citation.content %></p>
+                    <% if (post.citation.attachments && post.citation.attachments.length > 0) { %>
+                        <div class="mt-2 grid gap-1 <%= post.citation.attachments.length === 1 ? '' : 'grid-cols-2' %>">
+                            <% post.citation.attachments.slice(0, 4).forEach(function(att) { %>
+                                <img class="w-full h-32 object-cover rounded-lg" src="<%- att %>" alt="Attachment">
+                            <% }); %>
+                        </div>
+                    <% } %>
+                </a>
             <% } %>
             <div class="relative z-10 flex flex-row gap-5 mt-2 text-gray-500 justify-between w-5/7">
                 <button class="action-btn flex items-center gap-1 hover:text-blue-500 transition-colors" 

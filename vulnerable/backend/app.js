@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const postsRoutes = require('./routes/posts');
 const usersRoutes = require('./routes/users');
 const uploadRoutes = require('./routes/upload');
+const adminRoutes = require('./routes/admin');
 
 app.use(cors({
   origin: ['http://localhost:3000', 'http://frontend:3000'],
@@ -26,6 +27,19 @@ app.use('/api/auth', authRoutes);
 app.use('/api/posts', postsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/admin', adminRoutes);
+
+// 404 — no route matched
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  const status = err.status || 500;
+  res.status(status).json({ error: err.message || 'Internal server error' });
+});
 
 app.listen(PORT, () => {
   console.log(`API Backend działa na http://localhost:${PORT}`);

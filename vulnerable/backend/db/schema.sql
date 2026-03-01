@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   profile_image TEXT DEFAULT 'https://img.icons8.com/?size=100&id=z-JBA_KtSkxG&format=png&color=000000',
   background_image TEXT DEFAULT NULL,
   bio TEXT DEFAULT '',
+  isAdmin BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   root_id INTEGER NULL,
   content TEXT NOT NULL,
   attachments TEXT[],
+  citation_id INTEGER DEFAULT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
   CONSTRAINT fk_posts_user
     FOREIGN KEY (user_id)
@@ -30,7 +32,11 @@ CREATE TABLE IF NOT EXISTS users (
   CONSTRAINT fk_posts_root
     FOREIGN KEY (root_id)
     REFERENCES posts (id)
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+  CONSTRAINT fk_posts_citation
+    FOREIGN KEY (citation_id)
+    REFERENCES posts (id)
+    ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS likes (
@@ -80,4 +86,38 @@ CREATE TABLE IF NOT EXISTS reposts (
     REFERENCES users (id)
     ON DELETE CASCADE,
   CONSTRAINT uq_reposts UNIQUE (post_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS reported_posts (
+  id SERIAL PRIMARY KEY,
+  post_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT fk_reported_posts_post
+    FOREIGN KEY (post_id)
+    REFERENCES posts (id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_reported_posts_user
+    FOREIGN KEY (user_id)
+    REFERENCES users (id)
+    ON DELETE CASCADE,
+  CONSTRAINT uq_reported_posts UNIQUE (post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS reported_users (
+  id SERIAL PRIMARY KEY,
+  reported_user_id INTEGER NOT NULL,
+  reporting_user_id INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT fk_reported_users_reported
+    FOREIGN KEY (reported_user_id)
+    REFERENCES users (id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_reported_users_reporting
+    FOREIGN KEY (reporting_user_id)
+    REFERENCES users (id)
+    ON DELETE CASCADE,
+  CONSTRAINT uq_reported_users UNIQUE (reported_user_id, reporting_user_id),
+  CONSTRAINT chk_not_self_report CHECK (reported_user_id <> reporting_user_id)
 );

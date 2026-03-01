@@ -134,7 +134,7 @@ router.post('/:id/follow', authMiddleware, async (req, res) => {
   const userIdToFollow = req.params.id;
 
   try {
-    if (userIdToFollow === req.user.userId) {
+    if (Number(userIdToFollow) === req.user.userId) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Cannot follow yourself' });
     }
 
@@ -168,6 +168,25 @@ router.delete('/:id/follow', authMiddleware, async (req, res) => {
     return res.status(HTTP_STATUS.OK).json({ message: 'Successfully unfollowed user' });
   } catch (error) {
     console.error('Error unfollowing user:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: error.message });
+  }
+});
+
+router.post('/:id/report', authMiddleware, async (req, res) => {
+  const userIdToReport = req.params.id;
+  const { reason } = req.body;
+
+  try {
+    if (!reason) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Report reason is required' });
+    }
+
+    const sql = 'INSERT INTO reported_users (reporting_user_id, reported_user_id, reason) VALUES ($1, $2, $3)';
+    await pool.query(sql, [req.user.userId, userIdToReport, reason]);
+
+    return res.json({ message: 'User reported successfully' });
+  } catch (error) {
+    console.error('Error reporting user:', error);
     return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: error.message });
   }
 });

@@ -31,6 +31,10 @@ function validatePostInput(data) {
   if (data.parent_id && (typeof data.parent_id !== 'number' && isNaN(parseInt(data.parent_id)))) {
     throw new ValidationError('Invalid parent_id');
   }
+
+  if (data.citation_id != null && (typeof data.citation_id !== 'number' && isNaN(parseInt(data.citation_id)))) {
+    throw new ValidationError('Invalid citation_id');
+  }
   
   return true;
 }

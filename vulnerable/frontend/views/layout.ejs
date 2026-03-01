@@ -26,15 +26,31 @@
                 <img class="size-10" src="https://img.icons8.com/?size=100&id=15265&format=png&color=FFFFFF">
                 <p>Profile</p>
             </a>
+            <% if (user?.role === 'admin') { %>
+            <a href="/admin" class="flex flex-row items-center w-1/3 gap-5 hover:bg-stone-900 cursor-pointer p-3 rounded-full">
+                <img class="size-10" src="https://img.icons8.com/?size=100&id=887&format=png&color=FFFFFF">
+                <p>Admin Panel</p>
+            </a>
+            <% } %>
             <% if (user) { %>
-            <div class="mt-auto mb-4 flex flex-row items-center hover:bg-stone-900 cursor-pointer p-3 rounded-full">   
-                <img class="size-10 rounded-full ml-3" id="profile-img-sidebar" src="<%= user.profile_image || 'https://via.placeholder.com/40' %>">
-                <div class="flex flex-col ml-5">
-                    <p id="username" class=""><%- user.username %></p>
-                    <p id="email" class="text-gray-500"><%- user.email %></p>
+            <div class="mt-auto mb-4 relative w-2/3">
+                <div id="user-menu-trigger"
+                     class="flex flex-row items-center hover:bg-stone-900 cursor-pointer p-3 rounded-full select-none">
+                    <img class="size-10 rounded-full ml-3" id="profile-img-sidebar" src="<%= user.profile_image || 'https://via.placeholder.com/40' %>">
+                    <div class="flex flex-col ml-5 overflow-hidden">
+                        <p id="username" class="truncate"><%- user.username %></p>
+                        <p id="email" class="text-gray-500 text-sm truncate"><%- user.email %></p>
+                    </div>
+                    <p class="ml-auto pl-2 text-gray-400">···</p>
                 </div>
-                <p class="pl-30">...</p>
-
+                <div id="user-menu"
+                     class="hidden absolute bottom-full left-0 w-full mb-1 bg-stone-900 border border-stone-700 rounded-xl shadow-lg overflow-hidden z-50">
+                    <a href="/logout"
+                       class="flex items-center gap-3 px-4 py-3 hover:bg-stone-800 text-red-400 font-semibold text-sm">
+                        <img class="size-4" src="https://img.icons8.com/?size=100&id=26194&format=png&color=FF4444">
+                        Log out
+                    </a>
+                </div>
             </div>
             <% } %>
         </div>
@@ -62,9 +78,15 @@
             </div>
         </div>
     </div>
+    <%- include('../components/quoteModal') %>
+    <%- include('../components/reportModal') %>
+    <script src="/js/api.js"></script>
+    <script src="/js/postForm.js"></script>
+    <script src="/js/interactions.js"></script>
+    <script src="/js/moreMenu.js"></script>
     <script src="/js/actions.js"></script>
     <script>
-      window.CURRENT_USER = <% if (user) { %>{ id: <%- user.id %>, role: 'user' }<% } else { %>null<% } %>;
+      window.CURRENT_USER = <% if (user) { %>{ id: <%- user.id %>, role: '<%- user.role %>' }<% } else { %>null<% } %>;
     </script>
     <script>
       function formatDates(root) {
@@ -78,6 +100,17 @@
       }
       document.addEventListener('DOMContentLoaded', () => formatDates());
       window.formatDates = formatDates;
+    </script>
+    <script>
+      const _trigger = document.getElementById('user-menu-trigger');
+      const _menu    = document.getElementById('user-menu');
+      if (_trigger && _menu) {
+        _trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          _menu.classList.toggle('hidden');
+        });
+        document.addEventListener('click', () => _menu.classList.add('hidden'));
+      }
     </script>
 </body>
 </html>

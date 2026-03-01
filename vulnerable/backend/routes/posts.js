@@ -102,12 +102,12 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 router.post('/', authMiddleware, async (req, res) => {
     try {
-        const { content, attachment_urls, root_id, parent_id } = req.body;
+        const { content, attachment_urls, root_id, parent_id, citation_id } = req.body;
         
         validatePostInput(req.body);
         
-        const sql = 'INSERT INTO posts (user_id, content, attachments, root_id, parent_id) VALUES ($1, $2, $3, $4, $5) RETURNING *';
-        const insertResult = await pool.query(sql, [req.user.userId, content, attachment_urls || [], root_id || null, parent_id || null]);
+        const sql = 'INSERT INTO posts (user_id, content, attachments, root_id, parent_id, citation_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *';
+        const insertResult = await pool.query(sql, [req.user.userId, content, attachment_urls || [], root_id || null, parent_id || null, citation_id || null]);
         res.status(HTTP_STATUS.CREATED).json({ post: insertResult.rows[0] });
     } catch (error) {
         console.error('Error creating post:', error);
@@ -337,6 +337,20 @@ router.get('/:id/thread', authMiddleware, async (req, res) => {
         res.json({ thread: enrichedThread });
     } catch (error) {
         console.error('Error fetching thread:', error);
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+    }
+});
+router.post('/:id/report', authMiddleware, async (req, res) => {
+    const postId = req.params.id;
+    const { reason } = req.body;
+    try {
+        if (!reason) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Report reason is required' });
+        }
+        await pool.query('INSERT INTO reported_posts (user_id, post_id, reason) VALUES ($1, $2, $3)', [req.user.userId, postId, reason]);
+        return res.json({ message: 'Post reported' });
+    } catch (error) {
+        console.error('Error reporting post:', error);
         res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
     }
 });

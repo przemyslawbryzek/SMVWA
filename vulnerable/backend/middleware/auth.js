@@ -30,4 +30,18 @@ function optionalAuthMiddleware(req, res, next) {
   }
 }
 
-module.exports = { authMiddleware, optionalAuth: optionalAuthMiddleware };
+/**
+ * Requires the requesting user to have role === 'admin'.
+ * Must be used after authMiddleware (relies on req.user being set).
+ */
+function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: admins only' });
+  }
+  next();
+}
+
+module.exports = { authMiddleware, optionalAuth: optionalAuthMiddleware, requireAdmin };

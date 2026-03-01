@@ -1,3 +1,4 @@
+<% if (user) { %>
 <div class="p-4 border-stone-700 border-b-1 flex flex-row gap-4 w-full">
     <img class="size-10 rounded-full" id="profile-img" src="<%= user.profile_image || 'https://via.placeholder.com/40' %>" alt="Profile">
     <form id="post-form" class="flex flex-col gap-3 w-full" data-root-id="<% if (post) { %><%= post.root_id || post.id %><% } else { %>null<% } %>"
@@ -13,3 +14,4 @@
         </div>
     </form>
 </div>
+<% } %>
