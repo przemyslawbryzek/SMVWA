@@ -1,4 +1,4 @@
-<div class="flex flex-row justify-between h-15 border-stone-700 border-b-1 fixed top-0 bg-black z-60 w-3/7">
+<div class="flex flex-row justify-between h-15 border-stone-700 border-b-1 fixed top-0 bg-black z-60 w-[calc(100%-4rem)] xl:w-3/7">
     <% tabs.forEach(tab => { %>
         <div id="<%= tab.id %>" class="w-1/<%= tabs.length %> h-full flex justify-center items-center hover:bg-stone-900 cursor-pointer <%= tab.active ? 'border-b-2 border-blue-500 font-bold' : '' %>">
             <%= tab.label %>

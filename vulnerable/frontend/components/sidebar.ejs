@@ -1,0 +1,53 @@
+<div class="flex flex-col items-center text-white border-stone-700 border-r h-full w-16 xl:w-2/7 flex-shrink-0 gap-2 transition-all duration-200">
+    <div class="m-2 p-3 rounded-full font-bold text-2xl cursor-pointer hover:bg-stone-900 flex items-center justify-center xl:justify-start w-full xl:w-auto">
+        <span class="xl:hidden">S</span>
+        <span class="hidden xl:inline">SMVWA</span>
+    </div>
+    <a href="/" class="flex flex-row items-center justify-center xl:justify-start w-full xl:w-3/4 gap-4 hover:bg-stone-900 cursor-pointer p-3 rounded-full">
+        <img class="size-8 flex-shrink-0" src="https://img.icons8.com/?size=100&id=2797&format=png&color=FFFFFF">
+        <p class="hidden xl:block">Home</p>
+    </a>
+    <a href="/explore" class="flex flex-row items-center justify-center xl:justify-start w-full xl:w-3/4 gap-4 hover:bg-stone-900 cursor-pointer p-3 rounded-full">
+        <img class="size-8 flex-shrink-0" src="https://img.icons8.com/?size=100&id=7695&format=png&color=FFFFFF">
+        <p class="hidden xl:block">Explore</p>
+    </a>
+    <div class="flex flex-row items-center justify-center xl:justify-start w-full xl:w-3/4 gap-4 opacity-50 cursor-not-allowed p-3 rounded-full" title="Chat – coming soon">
+        <img class="size-8 flex-shrink-0" src="https://img.icons8.com/?size=100&id=53388&format=png&color=FFFFFF">
+        <p class="hidden xl:block">Chat</p>
+    </div>
+    <a href="/profile" class="flex flex-row items-center justify-center xl:justify-start w-full xl:w-3/4 gap-4 hover:bg-stone-900 cursor-pointer p-3 rounded-full">
+        <img class="size-8 flex-shrink-0" src="https://img.icons8.com/?size=100&id=15265&format=png&color=FFFFFF">
+        <p class="hidden xl:block">Profile</p>
+    </a>
+    <a href="/settings" class="flex flex-row items-center justify-center xl:justify-start w-full xl:w-3/4 gap-4 hover:bg-stone-900 cursor-pointer p-3 rounded-full">
+        <img class="size-8 flex-shrink-0" src="https://img.icons8.com/?size=100&id=364&format=png&color=FFFFFF">
+        <p class="hidden xl:block">Settings</p>
+    </a>
+    <% if (user?.role === 'admin') { %>
+    <a href="/admin" class="flex flex-row items-center justify-center xl:justify-start w-full xl:w-3/4 gap-4 hover:bg-stone-900 cursor-pointer p-3 rounded-full">
+        <img class="size-8 flex-shrink-0" src="https://img.icons8.com/?size=100&id=887&format=png&color=FFFFFF">
+        <p class="hidden xl:block">Admin Panel</p>
+    </a>
+    <% } %>
+    <% if (user) { %>
+    <div class="mt-auto mb-4 relative w-full px-2 xl:w-3/5 xl:px-0">
+        <div id="user-menu-trigger"
+             class="flex flex-row items-center justify-center xl:justify-start hover:bg-stone-900 cursor-pointer p-3 rounded-full select-none">
+            <img class="size-8 xl:size-10 rounded-full flex-shrink-0" id="profile-img-sidebar" src="<%= user.profile_image || 'https://via.placeholder.com/40' %>">
+            <div class="hidden xl:flex flex-col ml-3 overflow-hidden">
+                <p id="username" class="truncate"><%- user.username %></p>
+                <p id="email" class="text-gray-500 text-sm truncate"><%- user.email %></p>
+            </div>
+            <p class="ml-auto pl-2 text-gray-400 hidden xl:block">···</p>
+        </div>
+        <div id="user-menu"
+             class="hidden absolute bottom-full left-0 w-48 mb-1 bg-stone-900 border border-stone-700 rounded-xl shadow-lg overflow-hidden z-50">
+            <a href="/logout"
+               class="flex items-center gap-3 px-4 py-3 hover:bg-stone-800 font-semibold text-sm">
+                <img class="size-4" src="https://img.icons8.com/?size=100&id=26194&format=png&color=FFFFFF">
+                Log out
+            </a>
+        </div>
+    </div>
+    <% } %>
+</div>
