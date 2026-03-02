@@ -48,7 +48,7 @@
         <% } %>
         
         <% if ((!results.users || results.users.length === 0) && (!results.posts || results.posts.length === 0)) { %>
-            <div class="p-4 text-center text-gray-500">No results found</div>
+            <div class="p-4 text-center text-gray-500">No results found for "<%- searchQuery || 'search' %>"</div>
         <% } %>
     <% } %>
 </div>

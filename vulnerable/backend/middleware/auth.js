@@ -30,10 +30,6 @@ function optionalAuthMiddleware(req, res, next) {
   }
 }
 
-/**
- * Requires the requesting user to have role === 'admin'.
- * Must be used after authMiddleware (relies on req.user being set).
- */
 function requireAdmin(req, res, next) {
   if (!req.user) {
     return res.status(401).json({ error: 'Unauthorized' });

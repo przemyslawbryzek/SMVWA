@@ -30,7 +30,7 @@
                     <img class="size-5" src="https://img.icons8.com/?size=100&id=12620&format=png&color=808080">
                 </button>
             </div>
-            <p class="mt-2"><%- post.content %></p>
+            <p class="mt-2 z-20"><%- parseContent(post.content) %></p>
             <% if (post.attachments && post.attachments.length > 0 && showAttachments) { %>
                 <% if (post.attachments.length === 1) { %>
                     <div class="mt-2">
@@ -97,7 +97,7 @@
                         <p class="text-gray-500 text-sm">@<%- post.citation.author.email %></p>
                         <p class="text-gray-500">· <time datetime="<%= new Date(post.citation.created_at).toISOString() %>" data-date="<%= post.citation.created_at %>"><%= new Date(post.citation.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></time></p>
                     </div>
-                    <p class="text-sm mt-1"><%- post.citation.content %></p>
+                    <p class="text-sm mt-1"><%- parseContent(post.citation.content) %></p>
                     <% if (post.citation.attachments && post.citation.attachments.length > 0) { %>
                         <div class="mt-2 grid gap-1 <%= post.citation.attachments.length === 1 ? '' : 'grid-cols-2' %>">
                             <% post.citation.attachments.slice(0, 4).forEach(function(att) { %>

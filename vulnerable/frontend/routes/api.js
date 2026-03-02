@@ -4,6 +4,7 @@ const FormData = require('form-data');
 const multer = require('multer');
 const ejs = require('ejs');
 const path = require('path');
+const { parseContent } = require('../utils/contentParser');
 const { getAxiosConfig } = require('../middleware/cookieForward');
 
 const router = express.Router();
@@ -54,7 +55,7 @@ async function renderPostsAsJson(posts, limit, res) {
     return res.json({ html: '', hasMore: false });
   }
   const templatePath = path.join(__dirname, '../components/postTemplate.ejs');
-  const htmlParts = await Promise.all(postsToRender.map(post => ejs.renderFile(templatePath, { post, showAttachments: true })));
+  const htmlParts = await Promise.all(postsToRender.map(post => ejs.renderFile(templatePath, { post, showAttachments: true, parseContent })));
   res.json({ html: htmlParts.join(''), hasMore });
 }
 

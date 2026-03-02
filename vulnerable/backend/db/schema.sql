@@ -121,3 +121,10 @@ CREATE TABLE IF NOT EXISTS reported_users (
   CONSTRAINT uq_reported_users UNIQUE (reported_user_id, reporting_user_id),
   CONSTRAINT chk_not_self_report CHECK (reported_user_id <> reporting_user_id)
 );
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
+  token VARCHAR(6) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);

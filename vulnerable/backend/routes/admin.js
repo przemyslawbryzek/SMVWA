@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../db/pool');
 const { authMiddleware, requireAdmin } = require('../middleware/auth');
+const { HTTP_STATUS } = require('../config/constants');
 
 const router = express.Router();
 
@@ -10,7 +11,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req, res) => {
     return res.json({ success: true, users: result.rows });
   } catch (error) {
     console.error('Error fetching users:', error);
-    return res.status(500).json({ error: 'Database error', details: error.message });
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: error.message });
   }
 });
 
@@ -21,7 +22,7 @@ router.delete('/users/:id', authMiddleware, requireAdmin, async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     console.error('Error deleting user:', error);
-    return res.status(500).json({ error: 'Database error', details: error.message });
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: error.message });
   }
 });
 
@@ -32,7 +33,7 @@ router.delete('/posts/:id', authMiddleware, requireAdmin, async (req, res) => {
     return res.json({ success: true });
   } catch (error) {
     console.error('Error deleting post:', error);
-    return res.status(500).json({ error: 'Database error', details: error.message });
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: error.message });
   }
 });
 
@@ -62,7 +63,7 @@ router.get('/reported/posts', authMiddleware, requireAdmin, async (req, res) => 
     return res.json({ success: true, reportedPosts: result.rows });
   } catch (error) {
     console.error('Error fetching reported posts:', error);
-    return res.status(500).json({ error: 'Database error', details: error.message });
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: error.message });
   }
 });
 
@@ -88,7 +89,7 @@ router.get('/reported/users', authMiddleware, requireAdmin, async (req, res) => 
     return res.json({ success: true, reportedUsers: result.rows });
   } catch (error) {
     console.error('Error fetching reported users:', error);
-    return res.status(500).json({ error: 'Database error', details: error.message });
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: error.message });
   }
 });
 
@@ -99,7 +100,7 @@ router.delete('/reported/posts/:id', authMiddleware, requireAdmin, async (req, r
     return res.json({ success: true });
   } catch (error) {
     console.error('Error deleting reported post:', error);
-    return res.status(500).json({ error: 'Database error', details: error.message });
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: error.message });
   }
 });
 
@@ -110,7 +111,7 @@ router.delete('/reported/users/:id', authMiddleware, requireAdmin, async (req, r
     return res.json({ success: true });
   } catch (error) {
     console.error('Error deleting reported user:', error);
-    return res.status(500).json({ error: 'Database error', details: error.message });
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Database error', details: error.message });
   }
 });
 

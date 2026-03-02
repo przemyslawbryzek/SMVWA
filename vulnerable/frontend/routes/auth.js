@@ -41,4 +41,37 @@ router.get('/logout', (req, res) => {
   res.clearCookie('auth');
   res.redirect('/login');
 });
+
+router.get('/forgot-password', (req, res) => {
+  res.render('forgot.ejs', { error: null, debugToken: null });
+});
+
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  try {
+    const response = await axios.post(`${API_URL}/api/auth/forgot-password`, { email });
+    res.render('forgot.ejs', { error: null, debugToken: response.data.debug_token });
+  } catch (error) {
+    const msg = error.response?.data?.error || 'Something went wrong';
+    res.render('forgot.ejs', { error: msg, debugToken: null });
+  }
+});
+
+router.get('/reset-password', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.redirect('/forgot-password');
+  res.render('reset.ejs', { token, error: null, success: null });
+});
+
+router.post('/reset-password', async (req, res) => {
+  const { token, new_password } = req.body;
+  try {
+    const response = await axios.post(`${API_URL}/api/auth/reset-password`, { token, new_password });
+    res.render('reset.ejs', { token, error: null, success: response.data.message });
+  } catch (error) {
+    const msg = error.response?.data?.error || 'Reset failed';
+    res.render('reset.ejs', { token, error: msg, success: null });
+  }
+});
+
 module.exports = router;

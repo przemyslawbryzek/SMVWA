@@ -229,5 +229,20 @@ router.get('/admin/reported/users', requireAdmin, async (req, res) => {
     res.status(status).render('error', { status, message: 'Failed to load reported users' });
   }
 });
-
+router.get('/settings', requireAuth, async (req, res) => {
+  try {
+    const axiosConfig = getAxiosConfig(req);
+    const userResponse = await axios.get(`${API_URL}/api/users/profile`, axiosConfig);
+    res.render('layout', {
+      page: 'settings.ejs',
+      user: withRole(userResponse.data.user, req),
+      suggestions: []
+    });
+  } catch (error) {
+    console.error('Error loading settings page:', error.message);
+    if (error.response?.status === 401) return res.redirect('/login');
+    const status = error.response?.status || 500;
+    res.status(status).render('error', { status, message: 'Failed to load settings page' });
+  }
+});
 module.exports = router;

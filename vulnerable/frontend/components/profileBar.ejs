@@ -4,7 +4,9 @@
         <p><%- User.username %></p>
         <p class="text-gray-500"><%- User.email %></p>
     </div>
+    <% if (!user || User.id !== user.id) { %>
     <button data-user-id="<%= User.id %>" data-following="<%= User.isFollowing ? 'true' : 'false' %>" class="ml-auto px-3 py-1 rounded-full <%= User.isFollowing ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-white text-black hover:bg-gray-200' %>">
         <%= User.isFollowing ? 'Following' : 'Follow' %>
     </button>
+    <% } %>
 </a>

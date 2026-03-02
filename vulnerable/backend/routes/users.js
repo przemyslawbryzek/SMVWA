@@ -1,5 +1,6 @@
 const express = require('express');
 const pool = require('../db/pool');
+const bcrypt = require('bcrypt');
 const { authMiddleware, optionalAuth } = require('../middleware/auth');
 const { PAGINATION, HTTP_STATUS } = require('../config/constants');
 
@@ -30,7 +31,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
 
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
-    const { username, email, bio, profile_image, background_image } = req.body;
+    const { username, email, bio, profile_image, background_image, password } = req.body;
     
     const updates = [];
     const values = [];
@@ -59,6 +60,11 @@ router.put('/profile', authMiddleware, async (req, res) => {
     if (background_image !== undefined) {
       updates.push(`background_image = $${paramCount++}`);
       values.push(background_image);
+    }
+    
+    if (password !== undefined) {
+      updates.push(`password = $${paramCount++}`);
+      values.push(await bcrypt.hash(password, 10));
     }
     
     if (updates.length === 0) {

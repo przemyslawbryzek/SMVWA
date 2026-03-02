@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <title>Forgot Password</title>
+</head>
+<body class="bg-black text-white">
+  <div class="flex flex-row h-screen w-screen">
+    <div class="w-1/2 h-full flex items-center justify-center text-6xl font-bold">SMVWA</div>
+    <div class="w-1/2 h-full flex flex-col justify-center gap-5">
+      <h1 class="text-3xl">Reset Password</h1>
+      <p class="text-gray-400 text-sm">Enter your email address and we'll send you a reset token.</p>
+
+      <% if (error) { %>
+        <div class="p-3 bg-red-900 text-white rounded w-1/2"><%= error %></div>
+      <% } %>
+
+      <% if (debugToken) { %>
+        <div class="p-4 bg-stone-900 border border-yellow-600 rounded w-1/2">
+          <p class="text-yellow-400 text-sm font-semibold mb-1">⚠ Debug: Reset token (would be emailed in production)</p>
+          <p class="font-mono text-2xl tracking-widest text-white"><%= debugToken %></p>
+          <a href="/reset-password?token=<%= debugToken %>" class="mt-3 inline-block text-blue-400 hover:underline text-sm">→ Go to reset page</a>
+        </div>
+      <% } %>
+
+      <% if (!debugToken) { %>
+      <form action="/forgot-password" method="POST" class="flex flex-col gap-3 w-1/2">
+        <input type="email" name="email" placeholder="Email" class="p-2 rounded bg-black border border-white focus:outline-none focus:border-blue-500" required>
+        <button type="submit" class="p-2 rounded-full bg-white text-black hover:bg-gray-200">Send Reset Token</button>
+      </form>
+      <% } %>
+
+      <a href="/login" class="text-blue-500 hover:underline text-sm">← Back to Login</a>
+    </div>
+  </div>
+</body>
+</html>
