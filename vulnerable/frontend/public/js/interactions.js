@@ -112,7 +112,7 @@ async function handleFollow(userId, button) {
 
     // Sync all other follow buttons for the same user
     document.querySelectorAll(`button[data-user-id="${userId}"]`).forEach(btn => {
-      if (btn === button) return;
+      if (btn === button) {return;}
       if (isFollowing) {
         btn.textContent = 'Follow';
         btn.dataset.following = 'false';

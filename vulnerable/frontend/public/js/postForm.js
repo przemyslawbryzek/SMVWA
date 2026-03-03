@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   const postForm = document.getElementById('post-form');
-  if (!postForm) return;
+  if (!postForm) {return;}
 
   const attachmentInput = document.getElementById('attachment-input');
   const addAttachmentBtn = document.getElementById('add-attachment-btn');
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   addAttachmentBtn?.addEventListener('click', () => attachmentInput.click());
 
-  attachmentInput?.addEventListener('change', (e) => {
+  attachmentInput?.addEventListener('change', e => {
     selectedFiles = [...selectedFiles, ...Array.from(e.target.files)];
     renderPreviews();
   });
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     objectURLs = [];
   }
 
-  postForm.addEventListener('submit', async (e) => {
+  postForm.addEventListener('submit', async e => {
     e.preventDefault();
 
     const content = postForm.querySelector('textarea[name="content"]').value;

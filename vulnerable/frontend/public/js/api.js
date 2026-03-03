@@ -6,7 +6,7 @@ window.API = {
       credentials: 'include',
       ...options,
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {throw new Error(`HTTP ${res.status}`);}
     return res.json();
   },
 
@@ -37,7 +37,7 @@ window.API = {
       credentials: 'include',
       body: formData,
     });
-    if (!res.ok) throw new Error('Upload failed');
+    if (!res.ok) {throw new Error('Upload failed');}
     return res.json();
   },
 };

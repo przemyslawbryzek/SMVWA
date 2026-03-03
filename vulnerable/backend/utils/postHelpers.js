@@ -1,17 +1,16 @@
 const pool = require('../db/pool');
 
 async function enrichPosts(posts, userId = null) {
-  if (!posts || posts.length === 0) return [];
+  if (!posts || posts.length === 0) {return [];}
 
   const postIds = posts.map(p => p.id);
   const userIds = [...new Set(posts.map(p => p.user_id))];
   const citationIds = posts.map(p => p.citation_id).filter(Boolean);
 
   const [authors, comments, likes, reposts, userLikes, userReposts, citations] = await Promise.all([
-    pool.query(
-      `SELECT id, username, email, profile_image FROM users WHERE id = ANY($1)`,
-      [userIds]
-    ),
+    pool.query(`SELECT id, username, email, profile_image FROM users WHERE id = ANY($1)`, [
+      userIds,
+    ]),
     pool.query(
       `SELECT parent_id, COUNT(*) as count FROM posts WHERE parent_id = ANY($1) GROUP BY parent_id`,
       [postIds]
@@ -24,18 +23,24 @@ async function enrichPosts(posts, userId = null) {
       `SELECT post_id, COUNT(*) as count FROM reposts WHERE post_id = ANY($1) GROUP BY post_id`,
       [postIds]
     ),
-    userId ? pool.query(
-      `SELECT post_id FROM likes WHERE user_id = $1 AND post_id = ANY($2)`,
-      [userId, postIds]
-    ) : { rows: [] },
-    userId ? pool.query(
-      `SELECT post_id FROM reposts WHERE user_id = $1 AND post_id = ANY($2)`,
-      [userId, postIds]
-    ) : { rows: [] },
-    citationIds.length > 0 ? pool.query(
-      `SELECT p.id, p.content, p.attachments, p.created_at, u.id as user_id, u.username, u.email, u.profile_image FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ANY($1)`,
-      [citationIds]
-    ) : { rows: [] }
+    userId
+      ? pool.query(`SELECT post_id FROM likes WHERE user_id = $1 AND post_id = ANY($2)`, [
+          userId,
+          postIds,
+        ])
+      : { rows: [] },
+    userId
+      ? pool.query(`SELECT post_id FROM reposts WHERE user_id = $1 AND post_id = ANY($2)`, [
+          userId,
+          postIds,
+        ])
+      : { rows: [] },
+    citationIds.length > 0
+      ? pool.query(
+          `SELECT p.id, p.content, p.attachments, p.created_at, u.id as user_id, u.username, u.email, u.profile_image FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ANY($1)`,
+          [citationIds]
+        )
+      : { rows: [] },
   ]);
 
   const authorsMap = new Map(authors.rows.map(a => [a.id, a]));
@@ -44,19 +49,23 @@ async function enrichPosts(posts, userId = null) {
   const repostsMap = new Map(reposts.rows.map(r => [r.post_id, parseInt(r.count)]));
   const userLikesSet = new Set(userLikes.rows.map(l => l.post_id));
   const userRepostsSet = new Set(userReposts.rows.map(r => r.post_id));
-  const citationsMap = new Map(citations.rows.map(c => [c.id, {
-    id: c.id,
-    content: c.content,
-    created_at: c.created_at,
-    attachments: c.attachments || [],
-    author: {
-      id: c.user_id,
-      username: c.username,
-      email: c.email,
-      profile_image: c.profile_image
-    }
-  }]));
-
+  const citationsMap = new Map(
+    citations.rows.map(c => [
+      c.id,
+      {
+        id: c.id,
+        content: c.content,
+        created_at: c.created_at,
+        attachments: c.attachments || [],
+        author: {
+          id: c.user_id,
+          username: c.username,
+          email: c.email,
+          profile_image: c.profile_image,
+        },
+      },
+    ])
+  );
 
   return posts.map(post => ({
     ...post,
@@ -66,7 +75,7 @@ async function enrichPosts(posts, userId = null) {
     reposts_count: repostsMap.get(post.id) || 0,
     liked_by_user: userLikesSet.has(post.id),
     reposted_by_user: userRepostsSet.has(post.id),
-    citation: citationsMap.get(post.citation_id) || null
+    citation: citationsMap.get(post.citation_id) || null,
   }));
 }
 

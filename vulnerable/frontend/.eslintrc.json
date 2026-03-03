@@ -1,0 +1,33 @@
+{
+  "env": {
+    "node": true,
+    "browser": true,
+    "es2022": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2022
+  },
+  "extends": ["eslint:recommended"],
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_|next" }],
+    "no-console": "off",
+    "eqeqeq": ["error", "always"],
+    "curly": "error",
+    "no-var": "error",
+    "prefer-const": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["public/js/*.js"],
+      "globals": {
+        "handleLike": "readonly",
+        "handleRepost": "readonly",
+        "handleFollow": "readonly",
+        "showMoreMenu": "readonly"
+      },
+      "rules": {
+        "no-unused-vars": "off"
+      }
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 const express = require('express');
 const axios = require('axios');
+const { API_URL } = require('../config');
 
 const router = express.Router();
-const API_URL = process.env.API_URL || 'http://localhost:3001';
 router.get('/login', (req, res) => {
   res.render('login.ejs', { error: null });
 });
@@ -11,7 +11,11 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const response = await axios.post(`${API_URL}/api/auth/login`, { email, password }, { withCredentials: true });
+    const response = await axios.post(
+      `${API_URL}/api/auth/login`,
+      { email, password },
+      { withCredentials: true }
+    );
     const authToken = response.data.token;
 
     res.cookie('auth', authToken, { httpOnly: true, secure: false });
@@ -29,7 +33,11 @@ router.post('/register', async (req, res) => {
   const { username, email, password, confirm_password } = req.body;
 
   try {
-    const response = await axios.post(`${API_URL}/api/auth/register`, { username, email, password, confirm_password }, { withCredentials: true });
+    await axios.post(
+      `${API_URL}/api/auth/register`,
+      { username, email, password, confirm_password },
+      { withCredentials: true }
+    );
     res.redirect('/login');
   } catch (error) {
     console.error('Registration failed:', error.message);
@@ -59,14 +67,17 @@ router.post('/forgot-password', async (req, res) => {
 
 router.get('/reset-password', (req, res) => {
   const { token } = req.query;
-  if (!token) return res.redirect('/forgot-password');
+  if (!token) {return res.redirect('/forgot-password');}
   res.render('reset.ejs', { token, error: null, success: null });
 });
 
 router.post('/reset-password', async (req, res) => {
   const { token, new_password } = req.body;
   try {
-    const response = await axios.post(`${API_URL}/api/auth/reset-password`, { token, new_password });
+    const response = await axios.post(`${API_URL}/api/auth/reset-password`, {
+      token,
+      new_password,
+    });
     res.render('reset.ejs', { token, error: null, success: response.data.message });
   } catch (error) {
     const msg = error.response?.data?.error || 'Reset failed';

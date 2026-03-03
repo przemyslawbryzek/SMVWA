@@ -5,7 +5,7 @@ const pool = new Pool({
   port: Number(process.env.DB_PORT) || 5432,
   user: process.env.DB_USER || 'smvwa_user',
   password: process.env.DB_PASSWORD || 'smvwa_password',
-  database: process.env.DB_NAME || 'smvwa_db'
+  database: process.env.DB_NAME || 'smvwa_db',
 });
 
 module.exports = pool;

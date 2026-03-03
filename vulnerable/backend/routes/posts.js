@@ -4,15 +4,33 @@ const pool = require('../db/pool');
 const { authMiddleware, optionalAuth } = require('../middleware/auth');
 const { enrichPosts } = require('../utils/postHelpers');
 const { PAGINATION, HTTP_STATUS } = require('../config/constants');
-const { validatePostInput, validatePaginationParams, ValidationError } = require('../validators/postValidator');
+const {
+  validatePostInput,
+  validatePaginationParams,
+  ValidationError,
+} = require('../validators/postValidator');
+
+async function toggleUserPostAction(table, userId, postId) {
+  const check = await pool.query(`SELECT id FROM ${table} WHERE user_id = $1 AND post_id = $2`, [
+    userId,
+    postId,
+  ]);
+  if (check.rows.length > 0) {
+    await pool.query(`DELETE FROM ${table} WHERE user_id = $1 AND post_id = $2`, [userId, postId]);
+    return false;
+  } else {
+    await pool.query(`INSERT INTO ${table} (user_id, post_id) VALUES ($1, $2)`, [userId, postId]);
+    return true;
+  }
+}
 
 router.get('/search', authMiddleware, async (req, res) => {
   const { q, type } = req.query;
-  
+
   if (!q) {
     return res.json({ posts: [], users: [] });
   }
-  
+
   try {
     let postsResult = { rows: [] };
     let usersResult = { rows: [] };
@@ -63,12 +81,12 @@ router.get('/search', authMiddleware, async (req, res) => {
         [`%${q}%`, PAGINATION.SEARCH_LIMIT]
       );
     }
-    
-    const enrichedPosts = await enrichPosts(postsResult.rows, req.user?.userId);
-    
-    res.json({ 
+
+    const enrichedPosts = await enrichPosts(postsResult.rows, req.user.userId);
+
+    res.json({
       posts: enrichedPosts,
-      users: usersResult.rows
+      users: usersResult.rows,
     });
   } catch (error) {
     console.error('Error searching:', error);
@@ -83,14 +101,14 @@ router.get('/', authMiddleware, async (req, res) => {
   try {
     const { page, limit } = validatePaginationParams(req.query);
     const offset = (page - 1) * limit;
-    
+
     const result = await pool.query(
       'SELECT * FROM posts WHERE root_id IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2',
       [limit, offset]
     );
-    
-    const enrichedPosts = await enrichPosts(result.rows, req.user?.userId);
-    
+
+    const enrichedPosts = await enrichPosts(result.rows, req.user.userId);
+
     res.json({ posts: enrichedPosts });
   } catch (error) {
     console.error('Error fetching posts:', error);
@@ -101,29 +119,38 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 router.post('/', authMiddleware, async (req, res) => {
-    try {
-        const { content, attachment_urls, root_id, parent_id, citation_id } = req.body;
-        
-        validatePostInput(req.body);
-        
-        const sql = 'INSERT INTO posts (user_id, content, attachments, root_id, parent_id, citation_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *';
-        const insertResult = await pool.query(sql, [req.user.userId, content, attachment_urls || [], root_id || null, parent_id || null, citation_id || null]);
-        res.status(HTTP_STATUS.CREATED).json({ post: insertResult.rows[0] });
-    } catch (error) {
-        console.error('Error creating post:', error);
-        if (error instanceof ValidationError) {
-            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
-        }
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  try {
+    const { content, attachment_urls, root_id, parent_id, citation_id } = req.body;
+
+    validatePostInput(req.body);
+
+    const sql =
+      'INSERT INTO posts (user_id, content, attachments, root_id, parent_id, citation_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *';
+    const insertResult = await pool.query(sql, [
+      req.user.userId,
+      content,
+      attachment_urls || [],
+      root_id || null,
+      parent_id || null,
+      citation_id || null,
+    ]);
+    res.status(HTTP_STATUS.CREATED).json({ post: insertResult.rows[0] });
+  } catch (error) {
+    console.error('Error creating post:', error);
+    if (error instanceof ValidationError) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
     }
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 
 router.get('/user', authMiddleware, async (req, res) => {
-    try {
-        const { page, limit } = validatePaginationParams(req.query);
-        const offset = (page - 1) * limit;
-        
-        const result = await pool.query(`
+  try {
+    const { page, limit } = validatePaginationParams(req.query);
+    const offset = (page - 1) * limit;
+
+    const result = await pool.query(
+      `
             SELECT p.*, 
                    CASE WHEN r.user_id IS NOT NULL THEN true ELSE false END as is_repost,
                    r.created_at as repost_date
@@ -133,47 +160,50 @@ router.get('/user', authMiddleware, async (req, res) => {
               AND p.root_id IS NULL
             ORDER BY COALESCE(r.created_at, p.created_at) DESC
             LIMIT $2 OFFSET $3
-        `, [req.user.userId, limit, offset]);
-        
-        const enrichedPosts = await enrichPosts(result.rows, req.user.userId);
-        
-        res.json({ posts: enrichedPosts });
-    } catch (error) {
-        console.error('Error fetching user posts:', error);
-        if (error instanceof ValidationError) {
-            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
-        }
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+        `,
+      [req.user.userId, limit, offset]
+    );
+
+    const enrichedPosts = await enrichPosts(result.rows, req.user.userId);
+
+    res.json({ posts: enrichedPosts });
+  } catch (error) {
+    console.error('Error fetching user posts:', error);
+    if (error instanceof ValidationError) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
     }
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 router.get('/user/:id', optionalAuth, async (req, res) => {
-    const userId = req.params.id;
-    try {
-        const { page, limit } = validatePaginationParams(req.query);
-        const offset = (page - 1) * limit;
+  const userId = req.params.id;
+  try {
+    const { page, limit } = validatePaginationParams(req.query);
+    const offset = (page - 1) * limit;
 
-        const result = await pool.query(
-            'SELECT * FROM posts WHERE user_id = $1 AND root_id IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3',
-            [userId, limit, offset]
-        );
+    const result = await pool.query(
+      'SELECT * FROM posts WHERE user_id = $1 AND root_id IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+      [userId, limit, offset]
+    );
 
-        const enrichedPosts = await enrichPosts(result.rows, req.user?.userId);
+    const enrichedPosts = await enrichPosts(result.rows, req.user?.userId);
 
-        res.json({ posts: enrichedPosts });
-    } catch (error) {
-        console.error('Error fetching user posts:', error);
-        if (error instanceof ValidationError) {
-            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
-        }
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+    res.json({ posts: enrichedPosts });
+  } catch (error) {
+    console.error('Error fetching user posts:', error);
+    if (error instanceof ValidationError) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
     }
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 router.get('/followed', authMiddleware, async (req, res) => {
-    try {
-        const { page, limit } = validatePaginationParams(req.query);
-        const offset = (page - 1) * limit;
-        
-        const result = await pool.query(`
+  try {
+    const { page, limit } = validatePaginationParams(req.query);
+    const offset = (page - 1) * limit;
+
+    const result = await pool.query(
+      `
             SELECT p.*, 
                    CASE WHEN r.user_id IS NOT NULL THEN true ELSE false END as is_repost,
                    r.created_at as repost_date
@@ -183,145 +213,136 @@ router.get('/followed', authMiddleware, async (req, res) => {
               AND p.root_id IS NULL
             ORDER BY COALESCE(r.created_at, p.created_at) DESC
             LIMIT $2 OFFSET $3
-        `, [req.user.userId, limit, offset]);
-        
-        const enrichedPosts = await enrichPosts(result.rows, req.user.userId);
-        
-        res.json({ posts: enrichedPosts });
-    } catch (error) {
-        console.error('Error fetching followed posts:', error);
-        if (error instanceof ValidationError) {
-            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
-        }
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+        `,
+      [req.user.userId, limit, offset]
+    );
+
+    const enrichedPosts = await enrichPosts(result.rows, req.user.userId);
+
+    res.json({ posts: enrichedPosts });
+  } catch (error) {
+    console.error('Error fetching followed posts:', error);
+    if (error instanceof ValidationError) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
     }
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 router.get('/:id', optionalAuth, async (req, res) => {
-    const postId = req.params.id;
-    try {
-        const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
-        if (postResult.rows.length === 0) {
-            return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
-        }
-        
-        const enrichedPosts = await enrichPosts(postResult.rows, req.user?.userId);
-        
-        res.json({ post: enrichedPosts[0] });
-    } catch (error) {
-        console.error('Error fetching post:', error);
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  const postId = req.params.id;
+  try {
+    const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
+    if (postResult.rows.length === 0) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
     }
+
+    const enrichedPosts = await enrichPosts(postResult.rows, req.user?.userId);
+
+    res.json({ post: enrichedPosts[0] });
+  } catch (error) {
+    console.error('Error fetching post:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 router.delete('/:id', authMiddleware, async (req, res) => {
-    const postId = req.params.id;
-    try {
-        const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
-        if (postResult.rows.length === 0) {
-            return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
-        }
-        const post = postResult.rows[0];
-        if (post.user_id !== req.user.userId) {
-            return res.status(HTTP_STATUS.FORBIDDEN).json({ error: 'Forbidden' });
-        }
-        await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
-        res.json({ message: 'Post deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting post:', error);
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  const postId = req.params.id;
+  try {
+    const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
+    if (postResult.rows.length === 0) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
     }
+    const post = postResult.rows[0];
+    if (post.user_id !== req.user.userId) {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({ error: 'Forbidden' });
+    }
+    await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
+    res.json({ message: 'Post deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 router.put('/:id', authMiddleware, async (req, res) => {
-    const postId = req.params.id;
-    const { content, attachment_urls } = req.body;
-    try {
-        validatePostInput(req.body);
-        
-        const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
-        if (postResult.rows.length === 0) {
-            return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
-        }
-        const post = postResult.rows[0];
-        if (post.user_id !== req.user.userId) {
-            return res.status(HTTP_STATUS.FORBIDDEN).json({ error: 'Forbidden' });
-        }
-        // Only update content and attachments; root_id/parent_id are immutable after creation
-        const attachments = attachment_urls !== undefined ? attachment_urls : post.attachments;
-        const updateResult = await pool.query(
-            'UPDATE posts SET content = $1, attachments = $2 WHERE id = $3 RETURNING *',
-            [content, attachments, postId]
-        );
-        res.json({ post: updateResult.rows[0] });
-    } catch (error) {
-        console.error('Error updating post:', error);
-        if (error instanceof ValidationError) {
-            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
-        }
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  const postId = req.params.id;
+  const { content, attachment_urls } = req.body;
+  try {
+    validatePostInput(req.body);
+
+    const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
+    if (postResult.rows.length === 0) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
     }
+    const post = postResult.rows[0];
+    if (post.user_id !== req.user.userId) {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({ error: 'Forbidden' });
+    }
+    // Only update content and attachments; root_id/parent_id are immutable after creation
+    const attachments = attachment_urls !== undefined ? attachment_urls : post.attachments;
+    const updateResult = await pool.query(
+      'UPDATE posts SET content = $1, attachments = $2 WHERE id = $3 RETURNING *',
+      [content, attachments, postId]
+    );
+    res.json({ post: updateResult.rows[0] });
+  } catch (error) {
+    console.error('Error updating post:', error);
+    if (error instanceof ValidationError) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
+    }
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 router.post('/:id/like', authMiddleware, async (req, res) => {
-    const postId = req.params.id;
-    try {
-        const likeCheck = await pool.query('SELECT * FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, postId]);
-        if (likeCheck.rows.length > 0) {
-            await pool.query('DELETE FROM likes WHERE user_id = $1 AND post_id = $2', [req.user.userId, postId]);
-            return res.json({ message: 'Post unliked' });
-        } else {
-            await pool.query('INSERT INTO likes (user_id, post_id) VALUES ($1, $2)', [req.user.userId, postId]);
-            return res.json({ message: 'Post liked' });
-        }
-    } catch (error) {
-        console.error('Error liking/unliking post:', error);
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
-    }
+  const postId = req.params.id;
+  try {
+    const added = await toggleUserPostAction('likes', req.user.userId, postId);
+    return res.json({ message: added ? 'Post liked' : 'Post unliked' });
+  } catch (error) {
+    console.error('Error liking/unliking post:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 router.post('/:id/repost', authMiddleware, async (req, res) => {
-    const postId = req.params.id;
-    try {
-        const repostCheck = await pool.query('SELECT * FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, postId]);
-        if (repostCheck.rows.length > 0) {
-            await pool.query('DELETE FROM reposts WHERE user_id = $1 AND post_id = $2', [req.user.userId, postId]);
-            return res.json({ message: 'Post unreposted' });
-        } else {
-            await pool.query('INSERT INTO reposts (user_id, post_id) VALUES ($1, $2)', [req.user.userId, postId]);
-            return res.json({ message: 'Post reposted' });
-        }
-    } catch (error) {
-        console.error('Error reposting/unreposting post:', error);
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
-    }
+  const postId = req.params.id;
+  try {
+    const added = await toggleUserPostAction('reposts', req.user.userId, postId);
+    return res.json({ message: added ? 'Post reposted' : 'Post unreposted' });
+  } catch (error) {
+    console.error('Error reposting/unreposting post:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 router.get('/:id/comments', authMiddleware, async (req, res) => {
-    const postId = req.params.id;
-    try {
-        const { page, limit } = validatePaginationParams(req.query);
-        const offset = (page - 1) * limit;
-        
-        const commentsResult = await pool.query(
-            'SELECT * FROM posts WHERE parent_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
-            [postId, limit, offset]
-        );
-        
-        const enrichedComments = await enrichPosts(commentsResult.rows, req.user?.userId);
-        
-        res.json({ comments: enrichedComments });
-    } catch (error) {
-        console.error('Error fetching comments:', error);
-        if (error instanceof ValidationError) {
-            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
-        }
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  const postId = req.params.id;
+  try {
+    const { page, limit } = validatePaginationParams(req.query);
+    const offset = (page - 1) * limit;
+
+    const commentsResult = await pool.query(
+      'SELECT * FROM posts WHERE parent_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+      [postId, limit, offset]
+    );
+
+    const enrichedComments = await enrichPosts(commentsResult.rows, req.user.userId);
+
+    res.json({ comments: enrichedComments });
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    if (error instanceof ValidationError) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
     }
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 router.get('/:id/thread', authMiddleware, async (req, res) => {
-    const postId = req.params.id;
-    try {
-        const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
-        if (postResult.rows.length === 0) {
-            return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
-        }
-        
-        const threadResult = await pool.query(`
+  const postId = req.params.id;
+  try {
+    const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);
+    if (postResult.rows.length === 0) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
+    }
+
+    const threadResult = await pool.query(
+      `
             WITH RECURSIVE ancestors AS (
                 SELECT p.* FROM posts p
                 JOIN posts child ON child.parent_id = p.id AND child.id = $1
@@ -330,28 +351,34 @@ router.get('/:id/thread', authMiddleware, async (req, res) => {
                 JOIN ancestors a ON a.parent_id = p.id
             )
             SELECT * FROM ancestors ORDER BY created_at ASC
-        `, [postId]);
+        `,
+      [postId]
+    );
 
-        const enrichedThread = await enrichPosts(threadResult.rows, req.user?.userId);
-        
-        res.json({ thread: enrichedThread });
-    } catch (error) {
-        console.error('Error fetching thread:', error);
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
-    }
+    const enrichedThread = await enrichPosts(threadResult.rows, req.user.userId);
+
+    res.json({ thread: enrichedThread });
+  } catch (error) {
+    console.error('Error fetching thread:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 router.post('/:id/report', authMiddleware, async (req, res) => {
-    const postId = req.params.id;
-    const { reason } = req.body;
-    try {
-        if (!reason) {
-            return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Report reason is required' });
-        }
-        await pool.query('INSERT INTO reported_posts (user_id, post_id, reason) VALUES ($1, $2, $3)', [req.user.userId, postId, reason]);
-        return res.json({ message: 'Post reported' });
-    } catch (error) {
-        console.error('Error reporting post:', error);
-        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  const postId = req.params.id;
+  const { reason } = req.body;
+  try {
+    if (!reason) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Report reason is required' });
     }
+    await pool.query('INSERT INTO reported_posts (user_id, post_id, reason) VALUES ($1, $2, $3)', [
+      req.user.userId,
+      postId,
+      reason,
+    ]);
+    return res.json({ message: 'Post reported' });
+  } catch (error) {
+    console.error('Error reporting post:', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Internal server error' });
+  }
 });
 module.exports = router;

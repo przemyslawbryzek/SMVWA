@@ -1,5 +1,5 @@
 function parseContent(text) {
-  if (!text) return '';
+  if (!text) {return '';}
   text = text.replace(
     /(https?:\/\/[^\s<>"']+)/g,
     '<a href="$1" target="_blank" rel="noopener" class="text-blue-400 hover:underline break-all">$1</a>'

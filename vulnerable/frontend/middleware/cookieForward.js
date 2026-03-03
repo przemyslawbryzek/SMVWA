@@ -1,7 +1,7 @@
 function getAxiosConfig(req) {
   const config = {
     headers: {},
-    withCredentials: true
+    withCredentials: true,
   };
 
   if (req.cookies && req.cookies.auth) {
@@ -20,5 +20,5 @@ function attachAxiosConfig(req, res, next) {
 
 module.exports = {
   getAxiosConfig,
-  attachAxiosConfig
+  attachAxiosConfig,
 };

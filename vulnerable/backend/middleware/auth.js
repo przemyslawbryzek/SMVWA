@@ -3,7 +3,7 @@ function authMiddleware(req, res, next) {
   if (!authCookie) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  
+
   try {
     const decoded = Buffer.from(authCookie, 'base64').toString('utf-8');
     req.user = JSON.parse(decoded);
@@ -19,7 +19,7 @@ function optionalAuthMiddleware(req, res, next) {
     req.user = null;
     return next();
   }
-  
+
   try {
     const decoded = Buffer.from(authCookie, 'base64').toString('utf-8');
     req.user = JSON.parse(decoded);

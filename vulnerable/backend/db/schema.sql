@@ -128,3 +128,31 @@ CREATE TABLE IF NOT EXISTS password_resets (
   token VARCHAR(6) NOT NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS messages (
+  id SERIAL PRIMARY KEY,
+  sender_id INTEGER NOT NULL,
+  receiver_id INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT fk_messages_sender
+    FOREIGN KEY (sender_id)
+    REFERENCES users (id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_messages_receiver
+    FOREIGN KEY (receiver_id)
+    REFERENCES users (id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_posts_user_id       ON posts (user_id);
+CREATE INDEX IF NOT EXISTS idx_posts_parent_id     ON posts (parent_id);
+CREATE INDEX IF NOT EXISTS idx_posts_root_id       ON posts (root_id);
+CREATE INDEX IF NOT EXISTS idx_likes_post_id       ON likes (post_id);
+CREATE INDEX IF NOT EXISTS idx_likes_user_id       ON likes (user_id);
+CREATE INDEX IF NOT EXISTS idx_reposts_post_id     ON reposts (post_id);
+CREATE INDEX IF NOT EXISTS idx_reposts_user_id     ON reposts (user_id);
+CREATE INDEX IF NOT EXISTS idx_followers_follower  ON followers (follower_id);
+CREATE INDEX IF NOT EXISTS idx_followers_following ON followers (following_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender     ON messages (sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver   ON messages (receiver_id);

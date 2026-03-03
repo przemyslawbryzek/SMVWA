@@ -10,16 +10,19 @@ function showMoreMenu(postId, button) {
   const currentUser = window.CURRENT_USER;
   const authorId = Number(button.dataset.postAuthorId);
   const canModify = currentUser && (currentUser.id === authorId || currentUser.role === 'admin');
-  const postAuthor  = button.dataset.postAuthor || '';
-  const postEmail   = button.dataset.postAuthorEmail || '';
-  const postAvatar  = button.dataset.postAuthorAvatar || '';
+  const postAuthor = button.dataset.postAuthor || '';
+  const postEmail = button.dataset.postAuthorEmail || '';
+  const postAvatar = button.dataset.postAuthorAvatar || '';
   const postContent = button.dataset.postContent || '';
 
   const menu = document.createElement('div');
-  menu.className = 'more-menu absolute bg-stone-800 border border-stone-700 rounded-lg shadow-lg z-50 min-w-48';
+  menu.className =
+    'more-menu absolute bg-stone-800 border border-stone-700 rounded-lg shadow-lg z-50 min-w-48';
   menu.innerHTML = `
     <div class="py-2">
-      ${canModify ? `
+      ${
+        canModify
+          ? `
       <button class="menu-item w-full px-4 py-2 text-left hover:bg-stone-700"
               data-menu-action="edit" data-post-id="${postId}">
         Edit Post
@@ -27,7 +30,9 @@ function showMoreMenu(postId, button) {
       <button class="menu-item w-full px-4 py-2 text-left hover:bg-stone-700 text-red-500"
               data-menu-action="delete" data-post-id="${postId}">
         Delete Post
-      </button>` : ''}
+      </button>`
+          : ''
+      }
       <button class="menu-item w-full px-4 py-2 text-left hover:bg-stone-700"
               data-menu-action="quote"
               data-post-id="${postId}"
@@ -41,7 +46,9 @@ function showMoreMenu(postId, button) {
               data-menu-action="share" data-post-id="${postId}">
         Copy Link
       </button>
-      ${currentUser && currentUser.id !== authorId ? `
+      ${
+        currentUser && currentUser.id !== authorId
+          ? `
       <button class="menu-item w-full px-4 py-2 text-left hover:bg-stone-700 text-orange-400"
               data-menu-action="report-post" data-post-id="${postId}"
               data-user-name="${postAuthor.replace(/"/g, '&quot;')}">
@@ -52,7 +59,9 @@ function showMoreMenu(postId, button) {
               data-user-id="${authorId}"
               data-user-name="${postAuthor.replace(/"/g, '&quot;')}">
         Report User
-      </button>` : ''}
+      </button>`
+          : ''
+      }
     </div>
   `;
 
@@ -79,15 +88,15 @@ function showMoreMenu(postId, button) {
 let _quoteCurrentPostId = null;
 
 function showQuoteModal(postId, author, email, avatar, content) {
-  const modal   = document.getElementById('quote-modal');
+  const modal = document.getElementById('quote-modal');
   const textarea = document.getElementById('quote-content');
-  if (!modal) return;
+  if (!modal) {return;}
 
   _quoteCurrentPostId = postId;
 
-  document.getElementById('quote-cited-post').href       = `/post/${postId}`;
+  document.getElementById('quote-cited-post').href = `/post/${postId}`;
   document.getElementById('quote-cited-author').textContent = author;
-  document.getElementById('quote-cited-email').textContent  = email ? `@${email}` : '';
+  document.getElementById('quote-cited-email').textContent = email ? `@${email}` : '';
   document.getElementById('quote-cited-content').textContent = content;
   const avatar_el = document.getElementById('quote-cited-avatar');
   avatar_el.src = avatar || 'https://via.placeholder.com/20';
@@ -105,17 +114,22 @@ function hideQuoteModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const modal  = document.getElementById('quote-modal');
+  const modal = document.getElementById('quote-modal');
   const submitBtn = document.getElementById('quote-submit-btn');
-  if (!modal) return;
+  if (!modal) {return;}
 
   document.getElementById('quote-modal-close').addEventListener('click', hideQuoteModal);
-  modal.addEventListener('click', (e) => { if (e.target === modal) hideQuoteModal(); });
+  modal.addEventListener('click', e => {
+    if (e.target === modal) {hideQuoteModal();}
+  });
 
   submitBtn.addEventListener('click', async () => {
     const textarea = document.getElementById('quote-content');
-    const content  = textarea.value.trim();
-    if (!content) { textarea.focus(); return; }
+    const content = textarea.value.trim();
+    if (!content) {
+      textarea.focus();
+      return;
+    }
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Posting...';
@@ -139,9 +153,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Menu item actions ────────────────────────────────────────────────────────
 
-document.addEventListener('click', async (e) => {
+document.addEventListener('click', async e => {
   const item = e.target.closest('.menu-item');
-  if (!item) return;
+  if (!item) {return;}
 
   e.stopPropagation();
 
@@ -152,10 +166,11 @@ document.addEventListener('click', async (e) => {
     document.querySelector('.more-menu')?.remove();
     const postCard = document.querySelector(`a[href="/post/${postId}"].absolute`)?.parentElement;
     const contentP = postCard?.querySelector('p.mt-2');
-    if (!contentP) return;
+    if (!contentP) {return;}
 
     const textarea = document.createElement('textarea');
-    textarea.className = 'w-full bg-stone-800 text-white p-2 rounded-lg border border-stone-600 focus:outline-none focus:border-blue-500 resize-none';
+    textarea.className =
+      'w-full bg-stone-800 text-white p-2 rounded-lg border border-stone-600 focus:outline-none focus:border-blue-500 resize-none';
     textarea.value = contentP.textContent;
     textarea.rows = 3;
 
@@ -179,7 +194,7 @@ document.addEventListener('click', async (e) => {
 
     controls.querySelector('.save-edit-btn').addEventListener('click', async () => {
       const newContent = textarea.value.trim();
-      if (!newContent) return;
+      if (!newContent) {return;}
 
       try {
         await window.API.put(`/api/posts/${postId}`, { content: newContent });
@@ -192,9 +207,8 @@ document.addEventListener('click', async (e) => {
         alert('Failed to update post');
       }
     });
-
   } else if (action === 'delete') {
-    if (!confirm('Are you sure you want to delete this post?')) return;
+    if (!confirm('Are you sure you want to delete this post?')) {return;}
 
     try {
       await window.API.delete(`/api/posts/${postId}`);
@@ -207,7 +221,6 @@ document.addEventListener('click', async (e) => {
       console.error('Delete error:', err);
       alert('Failed to delete post');
     }
-
   } else if (action === 'quote') {
     document.querySelector('.more-menu')?.remove();
     showQuoteModal(
@@ -217,7 +230,6 @@ document.addEventListener('click', async (e) => {
       item.dataset.postAuthorAvatar || '',
       item.dataset.postContent || ''
     );
-
   } else if (action === 'share') {
     document.querySelector('.more-menu')?.remove();
     const link = `${window.location.origin}/post/${postId}`;
@@ -227,14 +239,16 @@ document.addEventListener('click', async (e) => {
     } catch {
       prompt('Copy this link:', link);
     }
-
   } else if (action === 'report-post') {
     document.querySelector('.more-menu')?.remove();
     showReportModal('post', postId, `Post by ${item.dataset.userName || ''}`);
-
   } else if (action === 'report-user') {
     document.querySelector('.more-menu')?.remove();
-    showReportModal('user', item.dataset.userId, `@${item.dataset.userName || item.dataset.userId}`);
+    showReportModal(
+      'user',
+      item.dataset.userId,
+      `@${item.dataset.userName || item.dataset.userId}`
+    );
   }
 });
 
@@ -245,7 +259,7 @@ let _reportEntityId = null;
 
 function showReportModal(type, entityId, displayName) {
   const modal = document.getElementById('report-modal');
-  if (!modal) return;
+  if (!modal) {return;}
 
   _reportType = type;
   _reportEntityId = entityId;
@@ -268,22 +282,28 @@ function hideReportModal() {
 document.addEventListener('DOMContentLoaded', () => {
   const modal = document.getElementById('report-modal');
   const submitBtn = document.getElementById('report-submit-btn');
-  if (!modal) return;
+  if (!modal) {return;}
 
   document.getElementById('report-modal-close').addEventListener('click', hideReportModal);
-  modal.addEventListener('click', (e) => { if (e.target === modal) hideReportModal(); });
+  modal.addEventListener('click', e => {
+    if (e.target === modal) {hideReportModal();}
+  });
 
   submitBtn.addEventListener('click', async () => {
     const reason = document.getElementById('report-reason').value.trim();
-    if (!reason) { document.getElementById('report-reason').focus(); return; }
+    if (!reason) {
+      document.getElementById('report-reason').focus();
+      return;
+    }
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Reporting...';
 
     try {
-      const path = _reportType === 'post'
-        ? `/api/posts/${_reportEntityId}/report`
-        : `/api/users/${_reportEntityId}/report`;
+      const path =
+        _reportType === 'post'
+          ? `/api/posts/${_reportEntityId}/report`
+          : `/api/users/${_reportEntityId}/report`;
       await window.API.post(path, { reason });
       submitBtn.disabled = false;
       submitBtn.textContent = 'Report';
