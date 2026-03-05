@@ -44,7 +44,7 @@ router.get('/files', (req, res) => {
   }
   const filePath = path.join(chatFilesPath, filename);
   res.sendFile(filePath, err => {
-    if (err) res.status(404).json({ error: 'File not found' });
+    if (err) {res.status(404).json({ error: 'File not found' });}
   });
 });
 
