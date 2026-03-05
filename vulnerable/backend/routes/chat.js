@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../db/pool');
 const { authMiddleware } = require('../middleware/auth');
 const { HTTP_STATUS } = require('../config/constants');
+const { handleError } = require('../utils/routeHelpers');
 
 const router = express.Router();
 
@@ -20,25 +21,23 @@ router.get('/conversations', authMiddleware, async (req, res) => {
           m.sender_id
         FROM (
           SELECT
-            CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END AS other_user_id,
+            CASE WHEN sender_id = ${userId} THEN receiver_id ELSE sender_id END AS other_user_id,
             content,
             created_at,
             sender_id
           FROM messages
-          WHERE sender_id = $1 OR receiver_id = $1
+          WHERE sender_id = ${userId} OR receiver_id = ${userId}
         ) m
         JOIN users u ON u.id = m.other_user_id
         ORDER BY other_user_id, m.created_at DESC
       ) convs
       ORDER BY last_message_at DESC
-    `,
-      [userId]
+    `
     );
 
-    res.json(result.rows);
+    return res.json(result.rows);
   } catch (err) {
-    console.error('GET /conversations error:', err);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Failed to fetch conversations' });
+    return handleError(res, err, 'GET /conversations error');
   }
 });
 router.get('/conversations/:partnerId/messages', authMiddleware, async (req, res) => {
@@ -56,16 +55,14 @@ router.get('/conversations/:partnerId/messages', authMiddleware, async (req, res
         u.profile_image AS sender_profile_image
       FROM messages m
       JOIN users u ON u.id = m.sender_id
-      WHERE (m.sender_id = $1 AND m.receiver_id = $2) OR (m.sender_id = $2 AND m.receiver_id = $1)
+      WHERE (m.sender_id = ${userId} AND m.receiver_id = ${partnerId}) OR (m.sender_id = ${partnerId} AND m.receiver_id = ${userId})
       ORDER BY m.created_at ASC
-    `,
-      [userId, partnerId]
+    `
     );
 
-    res.json(result.rows);
+    return res.json(result.rows);
   } catch (err) {
-    console.error('GET /conversations/:partnerId/messages error:', err);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Failed to fetch messages' });
+    return handleError(res, err, 'GET /conversations/:partnerId/messages error');
   }
 });
 
@@ -82,16 +79,14 @@ router.post('/conversations/:partnerId/messages', authMiddleware, async (req, re
     const result = await pool.query(
       `
       INSERT INTO messages (sender_id, receiver_id, content)
-      VALUES ($1, $2, $3)
+      VALUES (${userId}, ${partnerId}, '${content}')
       RETURNING id, content, created_at
-    `,
-      [userId, partnerId, content]
+    `
     );
 
-    res.status(HTTP_STATUS.CREATED).json(result.rows[0]);
+    return res.status(HTTP_STATUS.CREATED).json(result.rows[0]);
   } catch (err) {
-    console.error('POST /conversations/:partnerId/messages error:', err);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'Failed to send message' });
+    return handleError(res, err, 'POST /conversations/:partnerId/messages error');
   }
 });
 

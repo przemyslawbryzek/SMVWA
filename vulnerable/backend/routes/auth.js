@@ -1,7 +1,9 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
+const serialize = require('node-serialize');
 const pool = require('../db/pool');
 const { HTTP_STATUS } = require('../config/constants');
+const { handleError } = require('../utils/routeHelpers');
 
 const router = express.Router();
 
@@ -17,19 +19,12 @@ router.post('/register', async (req, res) => {
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
-    const sql = `
-      INSERT INTO users (username, email, password)
-      VALUES ($1, $2, $3)
-      RETURNING id, username, email, created_at
-    `;
-    const result = await pool.query(sql, [username, email, passwordHash]);
+    const sql = `INSERT INTO users (username, email, password) VALUES ('${username}', '${email}', '${passwordHash}') RETURNING id, username, email, created_at`;
+    const result = await pool.query(sql);
 
     return res.status(HTTP_STATUS.CREATED).json({ success: true, user: result.rows[0] });
   } catch (error) {
-    console.error('Error registering user:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    return handleError(res, error, 'Error registering user');
   }
 });
 
@@ -37,8 +32,8 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const sql = 'SELECT id, isAdmin, email, password FROM users WHERE email = $1';
-    const result = await pool.query(sql, [email]);
+    const sql = `SELECT id, isAdmin, email, password FROM users WHERE email = '${email}'`;
+    const result = await pool.query(sql);
 
     if (result.rows.length === 0) {
       return res.status(HTTP_STATUS.UNAUTHORIZED).json({ error: 'Invalid email' });
@@ -51,14 +46,11 @@ router.post('/login', async (req, res) => {
       return res.status(HTTP_STATUS.UNAUTHORIZED).json({ error: 'Invalid password' });
     }
     const payload = { userId: user.id, role: user.isadmin ? 'admin' : 'user' };
-    const token = Buffer.from(JSON.stringify(payload)).toString('base64');
+    const token = Buffer.from(serialize.serialize(payload)).toString('base64');
     res.cookie('auth', token);
     return res.json({ success: true, token, userId: user.id });
   } catch (error) {
-    console.error('Login error:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    return handleError(res, error, 'Login error');
   }
 });
 
@@ -67,7 +59,7 @@ router.post('/forgot-password', async (req, res) => {
   if (!email) {return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Email is required' });}
 
   try {
-    const result = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    const result = await pool.query(`SELECT id FROM users WHERE email = '${email}'`);
     if (result.rows.length === 0) {
       return res
         .status(HTTP_STATUS.NOT_FOUND)
@@ -76,19 +68,13 @@ router.post('/forgot-password', async (req, res) => {
 
     const userId = result.rows[0].id;
     const token = String(Math.floor(100000 + Math.random() * 900000));
-    await pool.query('INSERT INTO password_resets (user_id, token) VALUES ($1, $2)', [
-      userId,
-      token,
-    ]);
+    await pool.query(`INSERT INTO password_resets (user_id, token) VALUES (${userId}, '${token}')`);
     return res.json({
       message: 'Password reset token generated.',
       debug_token: token,
     });
   } catch (error) {
-    console.error('Forgot password error:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    return handleError(res, error, 'Forgot password error');
   }
 });
 
@@ -101,9 +87,7 @@ router.post('/reset-password', async (req, res) => {
   }
 
   try {
-    const result = await pool.query('SELECT user_id FROM password_resets WHERE token = $1', [
-      token,
-    ]);
+    const result = await pool.query(`SELECT user_id FROM password_resets WHERE token = '${token}'`);
 
     if (result.rows.length === 0) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Invalid reset token' });
@@ -112,14 +96,11 @@ router.post('/reset-password', async (req, res) => {
     const userId = result.rows[0].user_id;
     const passwordHash = await bcrypt.hash(new_password, 10);
 
-    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [passwordHash, userId]);
+    await pool.query(`UPDATE users SET password = '${passwordHash}' WHERE id = ${userId}`);
 
     return res.json({ success: true, message: 'Password has been reset successfully.' });
   } catch (error) {
-    console.error('Reset password error:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    return handleError(res, error, 'Reset password error');
   }
 });
 

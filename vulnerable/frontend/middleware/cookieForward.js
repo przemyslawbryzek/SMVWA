@@ -1,24 +1,19 @@
+const { INTERNAL_SECRET } = require('../config');
+
 function getAxiosConfig(req) {
+  const hasCookie = req.cookies && req.cookies.auth;
   const config = {
     headers: {},
     withCredentials: true,
   };
 
-  if (req.cookies && req.cookies.auth) {
+  if (hasCookie) {
     config.headers['Cookie'] = `auth=${req.cookies.auth}`;
-  } else if (req.headers.cookie) {
-    config.headers['Cookie'] = req.headers.cookie;
-  }
+  } 
 
   return config;
 }
 
-function attachAxiosConfig(req, res, next) {
-  req.axiosConfig = getAxiosConfig(req);
-  next();
-}
-
 module.exports = {
   getAxiosConfig,
-  attachAxiosConfig,
 };

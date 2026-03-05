@@ -1,8 +1,9 @@
+const { PAGINATION } = require('../config/constants');
+
 class ValidationError extends Error {
   constructor(message) {
     super(message);
     this.name = 'ValidationError';
-    this.statusCode = 400;
   }
 }
 
@@ -24,20 +25,15 @@ function validatePostInput(data) {
     throw new ValidationError('Attachments must be an array');
   }
 
-  if (data.root_id && typeof data.root_id !== 'number' && isNaN(parseInt(data.root_id))) {
+  if (data.root_id != null && isNaN(Number(data.root_id))) {
     throw new ValidationError('Invalid root_id');
   }
 
-  if (data.parent_id && typeof data.parent_id !== 'number' && isNaN(parseInt(data.parent_id))) {
+  if (data.parent_id != null && isNaN(Number(data.parent_id))) {
     throw new ValidationError('Invalid parent_id');
   }
 
-  if (
-    data.citation_id !== null &&
-    data.citation_id !== undefined &&
-    typeof data.citation_id !== 'number' &&
-    isNaN(parseInt(data.citation_id))
-  ) {
+  if (data.citation_id != null && isNaN(Number(data.citation_id))) {
     throw new ValidationError('Invalid citation_id');
   }
 }
@@ -50,8 +46,8 @@ function validatePaginationParams(query) {
     throw new ValidationError('Page must be >= 1');
   }
 
-  if (limit < 1 || limit > 100) {
-    throw new ValidationError('Limit must be between 1 and 100');
+  if (limit < 1 || limit > PAGINATION.MAX_LIMIT) {
+    throw new ValidationError(`Limit must be between 1 and ${PAGINATION.MAX_LIMIT}`);
   }
 
   return { page, limit };

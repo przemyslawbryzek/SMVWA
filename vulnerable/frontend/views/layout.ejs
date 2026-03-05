@@ -36,21 +36,11 @@
                 <% } else { %>
                     <p class="font-bold">Relevant people</p>
                     <div>
-                        <% const seenIds = new Set(); %>
-                        <% if (thread && thread.length > 0) { %>
-                            <% thread.forEach(post => { %>
-                                <% if (post.author && !seenIds.has(post.author.id)) { seenIds.add(post.author.id); %>
-                                    <%- include('../components/profileBar.ejs', { User: post.author }) %>
-                                <% } %>
+                        <% if (relevantPeople && relevantPeople.length > 0) { %>
+                            <% relevantPeople.forEach(person => { %>
+                                <%- include('../components/profileBar.ejs', { User: person }) %>
                             <% }) %>
-                        <% } %>
-                        <% if (post && post.author && !seenIds.has(post.author.id)) { seenIds.add(post.author.id); %>
-                            <%- include('../components/profileBar.ejs', { User: post.author }) %>
-                        <% } %>
-                        <% if (post && post.citation && post.citation.author && !seenIds.has(post.citation.author.id)) { seenIds.add(post.citation.author.id); %>
-                            <%- include('../components/profileBar.ejs', { User: post.citation.author }) %>
-                        <% } %>
-                        <% if (seenIds.size === 0) { %>
+                        <% } else { %>
                             <p class="text-gray-500 mt-4">No relevant people found</p>
                         <% } %>
                     </div>
@@ -65,32 +55,11 @@
     <script src="/js/interactions.js"></script>
     <script src="/js/moreMenu.js"></script>
     <script src="/js/actions.js"></script>
+    <script src="/js/dates.js"></script>
+    <script src="/js/userMenu.js"></script>
+    <script src="/js/linkPreview.js"></script>
     <script>
       window.CURRENT_USER = <% if (user) { %>{ id: <%- user.id %>, role: '<%- user.role %>' }<% } else { %>null<% } %>;
-    </script>
-    <script>
-      function formatDates(root) {
-        (root || document).querySelectorAll('time[data-date]').forEach(el => {
-          try {
-            el.textContent = new Date(el.dataset.date).toLocaleDateString(undefined, {
-              month: 'short', day: 'numeric', year: 'numeric'
-            });
-          } catch {}
-        });
-      }
-      document.addEventListener('DOMContentLoaded', () => formatDates());
-      window.formatDates = formatDates;
-    </script>
-    <script>
-      const _trigger = document.getElementById('user-menu-trigger');
-      const _menu    = document.getElementById('user-menu');
-      if (_trigger && _menu) {
-        _trigger.addEventListener('click', (e) => {
-          e.stopPropagation();
-          _menu.classList.toggle('hidden');
-        });
-        document.addEventListener('click', () => _menu.classList.add('hidden'));
-      }
     </script>
 </body>
 </html>

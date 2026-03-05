@@ -1,4 +1,5 @@
 module.exports = {
+  INTERNAL_SECRET: process.env.INTERNAL_SECRET || 'smvwa-internal-secret',
   PAGINATION: {
     DEFAULT_LIMIT: 20,
     MAX_LIMIT: 100,

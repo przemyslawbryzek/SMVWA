@@ -4,7 +4,7 @@ const { API_URL } = require('../config');
 
 const router = express.Router();
 router.get('/login', (req, res) => {
-  res.render('login.ejs', { error: null });
+  res.render('login.ejs', { error: null, next: req.query.next || '' });
 });
 
 router.post('/login', async (req, res) => {
@@ -19,10 +19,11 @@ router.post('/login', async (req, res) => {
     const authToken = response.data.token;
 
     res.cookie('auth', authToken, { httpOnly: true, secure: false });
-    res.redirect('/');
+    const redirectTo = req.body.next || req.query.next || '/';
+    res.redirect(redirectTo);
   } catch (error) {
     console.error('Login failed:', error.message);
-    res.render('login.ejs', { error: error.response?.data?.error || 'Login failed' });
+    res.render('login.ejs', { error: error.response?.data?.error || 'Login failed', next: req.body.next || req.query.next || '' });
   }
 });
 router.get('/register', (req, res) => {

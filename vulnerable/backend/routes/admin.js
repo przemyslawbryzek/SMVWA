@@ -2,53 +2,47 @@ const express = require('express');
 const pool = require('../db/pool');
 const { authMiddleware, requireAdmin } = require('../middleware/auth');
 const { HTTP_STATUS, PAGINATION } = require('../config/constants');
+const { handleError } = require('../utils/routeHelpers');
+const {
+  validatePaginationParams,
+  ValidationError,
+} = require('../validators/postValidator');
 
 const router = express.Router();
 
 router.get('/users', authMiddleware, requireAdmin, async (req, res) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(
-      PAGINATION.MAX_LIMIT,
-      Math.max(1, parseInt(req.query.limit) || PAGINATION.DEFAULT_LIMIT)
-    );
+    const { page, limit } = validatePaginationParams(req.query);
     const offset = (page - 1) * limit;
     const result = await pool.query(
-      'SELECT id, username, email, profile_image FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2',
-      [limit, offset]
+      `SELECT id, username, email, profile_image FROM users ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`
     );
     return res.json({ success: true, users: result.rows, page, limit });
   } catch (error) {
-    console.error('Error fetching users:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    if (error instanceof ValidationError) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: error.message });
+    }
+    return handleError(res, error, 'Error fetching users');
   }
 });
 
 router.delete('/users/:id', authMiddleware, requireAdmin, async (req, res) => {
   const userId = req.params.id;
   try {
-    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    await pool.query(`DELETE FROM users WHERE id = ${userId}`);
     return res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting user:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    return handleError(res, error, 'Error deleting user');
   }
 });
 
 router.delete('/posts/:id', authMiddleware, requireAdmin, async (req, res) => {
   const postId = req.params.id;
   try {
-    await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
+    await pool.query(`DELETE FROM posts WHERE id = ${postId}`);
     return res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting post:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    return handleError(res, error, 'Error deleting post');
   }
 });
 
@@ -77,10 +71,7 @@ router.get('/reported/posts', authMiddleware, requireAdmin, async (req, res) => 
     `);
     return res.json({ success: true, reportedPosts: result.rows });
   } catch (error) {
-    console.error('Error fetching reported posts:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    return handleError(res, error, 'Error fetching reported posts');
   }
 });
 
@@ -105,36 +96,27 @@ router.get('/reported/users', authMiddleware, requireAdmin, async (req, res) => 
     `);
     return res.json({ success: true, reportedUsers: result.rows });
   } catch (error) {
-    console.error('Error fetching reported users:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    return handleError(res, error, 'Error fetching reported users');
   }
 });
 
 router.delete('/reported/posts/:id', authMiddleware, requireAdmin, async (req, res) => {
   const reportId = req.params.id;
   try {
-    await pool.query('DELETE FROM reported_posts WHERE id = $1', [reportId]);
+    await pool.query(`DELETE FROM reported_posts WHERE id = ${reportId}`);
     return res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting reported post:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    return handleError(res, error, 'Error deleting reported post');
   }
 });
 
 router.delete('/reported/users/:id', authMiddleware, requireAdmin, async (req, res) => {
   const reportId = req.params.id;
   try {
-    await pool.query('DELETE FROM reported_users WHERE id = $1', [reportId]);
+    await pool.query(`DELETE FROM reported_users WHERE id = ${reportId}`);
     return res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting reported user:', error);
-    return res
-      .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-      .json({ error: 'Database error', details: error.message });
+    return handleError(res, error, 'Error deleting reported user');
   }
 });
 

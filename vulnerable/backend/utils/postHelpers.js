@@ -1,5 +1,32 @@
 const pool = require('../db/pool');
 
+/**
+ * Fetches follower and following counts for a given user ID.
+ *
+ * @param {number|string} userId
+ * @returns {Promise<{followers_count: string, following_count: string}>}
+ */
+async function getFollowCounts(userId) {
+  const [followersResult, followingResult] = await Promise.all([
+    pool.query(`SELECT COUNT(*) FROM followers WHERE following_id = ${userId}`),
+    pool.query(`SELECT COUNT(*) FROM followers WHERE follower_id = ${userId}`),
+  ]);
+  return {
+    followers_count: followersResult.rows[0].count,
+    following_count: followingResult.rows[0].count,
+  };
+}
+
+/**
+ * Enriches a list of raw post rows with author info, interaction counts,
+ * per-user like/repost state, and cited-post data.
+ *
+ * All DB queries are run in parallel via Promise.all to avoid N+1 queries.
+ *
+ * @param {object[]} posts   Raw rows from the posts table
+ * @param {number|null} userId  ID of the currently authenticated user (or null)
+ * @returns {Promise<object[]>} Enriched post objects
+ */
 async function enrichPosts(posts, userId = null) {
   if (!posts || posts.length === 0) {return [];}
 
@@ -7,7 +34,9 @@ async function enrichPosts(posts, userId = null) {
   const userIds = [...new Set(posts.map(p => p.user_id))];
   const citationIds = posts.map(p => p.citation_id).filter(Boolean);
 
-  const [authors, comments, likes, reposts, userLikes, userReposts, citations] = await Promise.all([
+  let authors, comments, likes, reposts, userLikes, userReposts, citations;
+  try {
+    [authors, comments, likes, reposts, userLikes, userReposts, citations] = await Promise.all([
     pool.query(`SELECT id, username, email, profile_image FROM users WHERE id = ANY($1)`, [
       userIds,
     ]),
@@ -41,7 +70,11 @@ async function enrichPosts(posts, userId = null) {
           [citationIds]
         )
       : { rows: [] },
-  ]);
+    ]);
+  } catch (err) {
+    console.error('[enrichPosts] DB error:', err);
+    throw err;
+  }
 
   const authorsMap = new Map(authors.rows.map(a => [a.id, a]));
   const commentsMap = new Map(comments.rows.map(c => [c.parent_id, parseInt(c.count)]));
@@ -79,4 +112,4 @@ async function enrichPosts(posts, userId = null) {
   }));
 }
 
-module.exports = { enrichPosts };
+module.exports = { enrichPosts, getFollowCounts };

@@ -8,4 +8,9 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'smvwa_db',
 });
 
+// pg.Pool handles reconnection automatically — do not exit the process on transient errors.
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+});
+
 module.exports = pool;
