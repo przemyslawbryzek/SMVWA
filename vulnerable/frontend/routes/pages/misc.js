@@ -12,11 +12,14 @@ function register(router) {
   router.get('/settings', requireAuth, async (req, res) => {
     try {
       const axiosConfig = getAxiosConfig(req);
-      const userResponse = await axios.get(`${API_URL}/api/users/profile`, axiosConfig);
+      const [userResponse, suggestionsResponse] = await Promise.all([
+        axios.get(`${API_URL}/api/users/profile`, axiosConfig),
+        axios.get(`${API_URL}/api/users/suggestions`, axiosConfig),
+      ]);
       res.render('layout', {
         page: 'settings.ejs',
         user: withRole(userResponse.data.user, res.locals.authPayload),
-        suggestions: [],
+        suggestions: suggestionsResponse.data.suggestions || [],
       });
     } catch (error) {
       console.error('Error loading settings page:', error.message);

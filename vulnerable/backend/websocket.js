@@ -15,17 +15,17 @@ const clients = new Map();
 function createMessageHandlers(ws, userId) {
   return {
     async message(data) {
-      const { to, content } = data;
+      const { to, content, attachment } = data;
       if (!to || !content || typeof content !== 'string' || !content.trim()) {
         ws.send(JSON.stringify({ type: 'error', message: 'Missing to or content' }));
         return;
       }
       try {
         const result = await pool.query(
-          `INSERT INTO messages (sender_id, receiver_id, content)
-           VALUES ($1, $2, $3)
-           RETURNING id, sender_id, receiver_id, content, created_at`,
-          [parseInt(userId), parseInt(to), content.trim()]
+          `INSERT INTO messages (sender_id, receiver_id, content, attachment)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, sender_id, receiver_id, content, attachment, created_at`,
+          [parseInt(userId), parseInt(to), content.trim(), attachment || null]
         );
         const msg = result.rows[0];
         const profilesResult = await pool.query(
@@ -41,6 +41,7 @@ function createMessageHandlers(ws, userId) {
             id: msg.id,
             to: msg.receiver_id,
             content: msg.content,
+            attachment: msg.attachment || null,
             created_at: msg.created_at,
             to_username: recipientProfile?.username || null,
             to_profile_image: recipientProfile?.profile_image || null,
@@ -54,6 +55,7 @@ function createMessageHandlers(ws, userId) {
               id: msg.id,
               from: msg.sender_id,
               content: msg.content,
+              attachment: msg.attachment || null,
               created_at: msg.created_at,
               from_username: senderProfile?.username || null,
               from_profile_image: senderProfile?.profile_image || null,

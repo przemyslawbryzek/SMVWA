@@ -134,6 +134,7 @@ CREATE TABLE IF NOT EXISTS messages (
   sender_id INTEGER NOT NULL,
   receiver_id INTEGER NOT NULL,
   content TEXT NOT NULL,
+  attachment TEXT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
   CONSTRAINT fk_messages_sender
     FOREIGN KEY (sender_id)
@@ -156,3 +157,6 @@ CREATE INDEX IF NOT EXISTS idx_followers_follower  ON followers (follower_id);
 CREATE INDEX IF NOT EXISTS idx_followers_following ON followers (following_id);
 CREATE INDEX IF NOT EXISTS idx_messages_sender     ON messages (sender_id);
 CREATE INDEX IF NOT EXISTS idx_messages_receiver   ON messages (receiver_id);
+
+-- Add attachment column to existing installations
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment TEXT DEFAULT NULL;

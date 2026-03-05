@@ -32,6 +32,7 @@ services:
       BACKEND_URL: http://localhost:3001
     volumes:
       - ./backend/uploads:/app/uploads
+      - ./backend/chat_files:/app/chat_files
     depends_on:
       postgres:
         condition: service_healthy

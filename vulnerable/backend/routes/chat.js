@@ -1,10 +1,52 @@
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const pool = require('../db/pool');
 const { authMiddleware } = require('../middleware/auth');
 const { HTTP_STATUS } = require('../config/constants');
 const { handleError } = require('../utils/routeHelpers');
 
 const router = express.Router();
+
+const chatFilesPath = path.join(__dirname, '../chat_files');
+if (!fs.existsSync(chatFilesPath)) {
+  fs.mkdirSync(chatFilesPath, { recursive: true });
+}
+
+const chatStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, chatFilesPath),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  },
+});
+const chatUpload = multer({ storage: chatStorage });
+
+// POST /api/chat/upload — upload a file attachment for chat (no auth required)
+router.post('/upload', chatUpload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'No file provided' });
+  }
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+  return res.status(HTTP_STATUS.CREATED).json({
+    filename: req.file.filename,
+    originalname: req.file.originalname,
+    url: `${baseUrl}/api/chat/files?name=${req.file.filename}`,
+  });
+});
+
+// GET /api/chat/files?name=<filename> — serve a chat attachment
+router.get('/files', (req, res) => {
+  const filename = req.query.name;
+  if (!filename) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'filename is required' });
+  }
+  const filePath = path.join(chatFilesPath, filename);
+  res.sendFile(filePath, err => {
+    if (err) res.status(404).json({ error: 'File not found' });
+  });
+});
 
 router.get('/conversations', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
@@ -49,6 +91,7 @@ router.get('/conversations/:partnerId/messages', authMiddleware, async (req, res
       SELECT
         m.id,
         m.content,
+        m.attachment,
         m.created_at,
         m.sender_id,
         u.username AS sender_username,
@@ -69,7 +112,7 @@ router.get('/conversations/:partnerId/messages', authMiddleware, async (req, res
 router.post('/conversations/:partnerId/messages', authMiddleware, async (req, res) => {
   const userId = req.user.userId;
   const partnerId = req.params.partnerId;
-  const { content } = req.body;
+  const { content, attachment } = req.body;
 
   if (!content || content.trim() === '') {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Message content cannot be empty' });
@@ -78,9 +121,9 @@ router.post('/conversations/:partnerId/messages', authMiddleware, async (req, re
   try {
     const result = await pool.query(
       `
-      INSERT INTO messages (sender_id, receiver_id, content)
-      VALUES (${userId}, ${partnerId}, '${content}')
-      RETURNING id, content, created_at
+      INSERT INTO messages (sender_id, receiver_id, content, attachment)
+      VALUES (${userId}, ${partnerId}, '${content}', ${attachment ? `'${attachment}'` : 'NULL'})
+      RETURNING id, content, attachment, created_at
     `
     );
 

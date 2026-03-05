@@ -1,28 +1,51 @@
 <%- include('../../components/pageHeader', { title: 'Settings', backUrl: '/' }) %>
 <div class="flex flex-col w-full">
-    <h2 class="text-xl font-bold mb-4 p-2 border-b-1 border-stone-700">Account Settings</h2>
-    <div id="settings-success" class="hidden mx-15 p-3 bg-green-900 text-green-200 rounded-lg text-sm"></div>
-    <div id="settings-error" class="hidden mx-15 p-3 bg-red-900 text-red-200 rounded-lg text-sm"></div>
-    <form id="settings-form" class="flex flex-col mx-15 gap-4 mt-2">
-        <div>
-            <label for="username" class="block text-sm font-medium text-gray-300">Username</label>
-            <input type="text" name="username" id="settings-username" value="<%- user.username %>" required
-                class="mt-1 p-2 w-full rounded-lg bg-black border border-stone-700 focus:outline-none focus:border-blue-500">
+    <div class="mx-15 mt-8 border-t border-stone-700 pt-6">
+        <h2 class="text-xl font-bold mb-1">Account Settings</h2>
+        <div id="settings-success" class="hidden mx-15 p-3 bg-green-900 text-green-200 rounded-lg text-sm"></div>
+        <div id="settings-error" class="hidden mx-15 p-3 bg-red-900 text-red-200 rounded-lg text-sm"></div>
+        <form id="settings-form" class="flex flex-col mx-15 gap-4 mt-2">
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-300">Username</label>
+                <input type="text" name="username" id="settings-username" value="<%- user.username %>" required
+                    class="mt-1 p-2 w-full rounded-lg bg-black border border-stone-700 focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-300">Email</label>
+                <input type="email" name="email" id="settings-email" value="<%- user.email %>" required
+                    class="mt-1 p-2 w-full rounded-lg bg-black border border-stone-700 focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-300">New Password</label>
+                <input type="password" name="password" id="settings-password"
+                    placeholder="Leave blank to keep current password"
+                    class="mt-1 p-2 w-full rounded-lg bg-black border border-stone-700 focus:outline-none focus:border-blue-500">
+            </div>
+            <button type="submit" id="settings-save-btn"
+                class="self-end px-5 py-2 rounded-full border-stone-700 border-1 cursor-pointer hover:bg-stone-900">Save Changes</button>
+        </form>
+    </div>
+    <div class="mx-15 mt-8 border-t border-stone-700 pt-6">
+        <h2 class="text-xl font-bold mb-1">Profile Card Export</h2>
+        <p class="text-sm text-gray-500 mb-3">
+            Download your profile as a standalone HTML business card.
+            Customise the template — variables available:
+            <code class="bg-stone-800 px-1 rounded">&lt;%= user.username %&gt;</code>,
+            <code class="bg-stone-800 px-1 rounded">&lt;%= user.bio %&gt;</code>,
+            <code class="bg-stone-800 px-1 rounded">&lt;%= user.followers_count %&gt;</code>,
+            <code class="bg-stone-800 px-1 rounded">&lt;%= user.profile_image %&gt;</code>
+        </p>
+        <textarea id="card-template-input" rows="12"
+            placeholder="Leave blank to use the default card template."
+            class="w-full p-2 bg-stone-800 rounded border border-stone-700 focus:outline-none focus:border-blue-500 font-mono text-sm"></textarea>
+        <div class="flex gap-3 mt-2">
+            <button id="card-preview-btn"
+                class="px-4 py-2 rounded-full border-stone-700 border-1 cursor-pointer hover:bg-stone-900 text-sm">Preview</button>
+            <button id="card-download-btn"
+                class="px-4 py-2 rounded-full bg-white text-black hover:bg-gray-200 text-sm">⬇ Download HTML</button>
         </div>
-        <div>
-            <label for="email" class="block text-sm font-medium text-gray-300">Email</label>
-            <input type="email" name="email" id="settings-email" value="<%- user.email %>" required
-                class="mt-1 p-2 w-full rounded-lg bg-black border border-stone-700 focus:outline-none focus:border-blue-500">
-        </div>
-        <div>
-            <label for="password" class="block text-sm font-medium text-gray-300">New Password</label>
-            <input type="password" name="password" id="settings-password"
-                placeholder="Leave blank to keep current password"
-                class="mt-1 p-2 w-full rounded-lg bg-black border border-stone-700 focus:outline-none focus:border-blue-500">
-        </div>
-        <button type="submit" id="settings-save-btn"
-            class="self-end px-5 py-2 rounded-full border-stone-700 border-1 cursor-pointer hover:bg-stone-900">Save Changes</button>
-    </form>
+        <iframe id="card-preview-frame" class="hidden w-full mt-3 rounded border border-stone-700 bg-white" style="height:420px;"></iframe>
+    </div>
 </div>
 <script>
 const API_URL = window.location.origin;
@@ -63,4 +86,41 @@ document.getElementById('settings-form').addEventListener('submit', async (e) =>
         btn.textContent = 'Save Changes';
     }
 });
+
+async function exportCard(download) {
+    const template = document.getElementById('card-template-input').value || null;
+    const body = template ? { template } : {};
+
+    const res = await fetch(`${API_URL}/api/profile/export`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert('Export failed: ' + (data.error || res.status));
+        return;
+    }
+
+    const html = await res.text();
+
+    if (download) {
+        const blob = new Blob([html], { type: 'text/html' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'profile_card.html';
+        a.click();
+        URL.revokeObjectURL(url);
+    } else {
+        const frame = document.getElementById('card-preview-frame');
+        frame.classList.remove('hidden');
+        frame.srcdoc = html;
+    }
+}
+
+document.getElementById('card-preview-btn').addEventListener('click',   () => exportCard(false));
+document.getElementById('card-download-btn').addEventListener('click',  () => exportCard(true));
 </script>

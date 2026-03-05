@@ -90,6 +90,25 @@
                                     <div class="flex flex-col <%= message.sender_id === user.id ? 'items-end' : 'items-start' %> gap-0.5">
                                         <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-2xl text-sm <%= message.sender_id === user.id ? 'bg-blue-600 text-white rounded-br-none' : 'bg-stone-800 text-white rounded-bl-none' %>">
                                             <%- message.content %>
+                                            <% if (message.attachment) { %>
+                                                <% const _isImg = /\.(png|jpe?g|gif|webp|svg)$/i.test(message.attachment); %>
+                                                <% const _backendUrl = 'http://localhost:3001'; %>
+                                                <% const _fileUrl = _backendUrl + '/api/chat/files?name=' + encodeURIComponent(message.attachment.split('?name=').pop()); %>
+                                                <% if (_isImg) { %>
+                                                    <div class="mt-1">
+                                                        <a href="<%- _fileUrl %>" target="_blank">
+                                                            <img src="<%- _fileUrl %>" class="max-w-xs rounded-lg max-h-48 object-contain" alt="attachment">
+                                                        </a>
+                                                    </div>
+                                                <% } else { %>
+                                                    <div class="mt-1">
+                                                        <a href="<%- _fileUrl %>" target="_blank" class="flex items-center gap-1 text-xs underline opacity-80">
+                                                            <img class="size-4" src="https://img.icons8.com/?size=100&id=86460&format=png&color=FFFFFF">
+                                                            <span><%= message.attachment.split('-').slice(2).join('-') || message.attachment %></span>
+                                                        </a>
+                                                    </div>
+                                                <% } %>
+                                            <% } %>
                                         </div>
                                         <span class="text-xs text-gray-500 px-1"><%= new Date(message.created_at).toLocaleTimeString('pl-PL', {hour: '2-digit', minute: '2-digit'}) %></span>
                                     </div>
@@ -108,6 +127,15 @@
                         <span class="text-gray-400 text-xs"><%- partner.username %> is typing…</span>
                     </div>
                     <div class="flex flex-row items-center gap-2 px-4 py-3 flex-shrink-0">
+                        <label for="chat-file-input" class="p-2 rounded-full hover:bg-stone-800 cursor-pointer flex-shrink-0" title="Attach file">
+                            <img class="size-5" src="https://img.icons8.com/?size=100&id=NjujHWc6iSDE&format=png&color=FFFFFF">
+                        </label>
+                        <input id="chat-file-input" type="file" class="hidden">
+                        <div id="chat-file-preview" class="hidden items-center gap-1 bg-stone-800 rounded-full px-3 py-1 text-xs text-gray-300 max-w-32 truncate">
+                            <img class="size-4" src="https://img.icons8.com/?size=100&id=86460&format=png&color=FFFFFF">
+                            <span id="chat-file-name" class="truncate"></span>
+                            <button id="chat-file-clear" class="ml-1 text-gray-500 hover:text-white">✕</button>
+                        </div>
                         <input id="message-input" type="text" placeholder="Message" autocomplete="off"
                             class="flex-1 bg-stone-900 rounded-full px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-stone-600 placeholder-gray-500">
                         <button id="message-send" class="p-2 rounded-full bg-blue-600 hover:bg-blue-700 flex-shrink-0">
@@ -240,7 +268,18 @@
         }
       }
 
-      function createBubble(content, isMine, pending = false, timestamp = null) {
+      function renderAttachment(attachmentUrl) {
+        if (!attachmentUrl) return '';
+        const isImage = /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(attachmentUrl);
+        if (isImage) {
+          return `<div class="mt-1"><a href="${attachmentUrl}" target="_blank"><img src="${attachmentUrl}" class="max-w-xs rounded-lg max-h-48 object-contain" alt="attachment"></a></div>`;
+        }
+        const name = new URL(attachmentUrl, window.location.href).searchParams.get('name') || 'file';
+        const displayName = name.split('-').slice(2).join('-') || name;
+        return `<div class="mt-1"><a href="${attachmentUrl}" target="_blank" class="flex items-center gap-1 text-xs underline opacity-80"><span>📎</span><span>${displayName}</span></a></div>`;
+      }
+
+      function createBubble(content, isMine, pending = false, timestamp = null, attachment = null) {
         const time = formatTime(timestamp || new Date());
         const wrapper = document.createElement('div');
         wrapper.className = `flex flex-row ${isMine ? 'justify-end' : 'justify-start'}`;
@@ -249,7 +288,7 @@
           <div class="flex flex-col ${isMine ? 'items-end' : 'items-start'} gap-0.5">
             <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-2xl text-sm ${
               isMine ? 'bg-blue-600 text-white rounded-br-none' : 'bg-stone-800 text-white rounded-bl-none'
-            } ${pending ? 'opacity-60' : ''}">${content}</div>
+            } ${pending ? 'opacity-60' : ''}">${content}${attachment ? renderAttachment(attachment) : ''}</div>
             <span class="text-xs text-gray-500 px-1 ${pending ? 'opacity-60' : ''}">${time}</span>
           </div>`;
         return wrapper;
@@ -304,7 +343,7 @@
               const placeholder = document.getElementById('no-messages-placeholder');
               if (placeholder) placeholder.remove();
               maybeInsertDateSeparator(data.created_at);
-              msgContainer.appendChild(createBubble(data.content, false, false, data.created_at));
+              msgContainer.appendChild(createBubble(data.content, false, false, data.created_at, data.attachment || null));
               scrollToBottom();
             }
           }
@@ -321,6 +360,11 @@
             upsertConversationRow(data.to, data.to_username, data.to_profile_image, data.content, true);
 
             if (pendingBubble) {
+              // if attachment arrived confirm it is rendered
+              if (data.attachment && !pendingBubble.querySelector('img, a[download]')) {
+                const bubble = pendingBubble.querySelector('div > div');
+                if (bubble) bubble.insertAdjacentHTML('beforeend', renderAttachment(data.attachment));
+              }
               pendingBubble.querySelectorAll('.opacity-60').forEach(el => el.classList.remove('opacity-60'));
               pendingBubble.removeAttribute('data-pending');
               pendingBubble = null;
@@ -389,22 +433,69 @@
       }
 
       connectWS();
-      function sendMessage() {
+
+      // ── File attachment UI ──────────────────────────────────────────────
+      const fileInput    = document.getElementById('chat-file-input');
+      const filePreview  = document.getElementById('chat-file-preview');
+      const fileName     = document.getElementById('chat-file-name');
+      const fileClear    = document.getElementById('chat-file-clear');
+
+      if (fileInput) {
+        fileInput.addEventListener('change', () => {
+          if (fileInput.files.length > 0) {
+            fileName.textContent = fileInput.files[0].name;
+            filePreview.classList.remove('hidden');
+            filePreview.classList.add('flex');
+          }
+        });
+      }
+      if (fileClear) {
+        fileClear.addEventListener('click', () => {
+          fileInput.value = '';
+          filePreview.classList.add('hidden');
+          filePreview.classList.remove('flex');
+        });
+      }
+
+      async function uploadFile(file) {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch('/api/chat/upload', { method: 'POST', body: form });
+        if (!res.ok) throw new Error('Upload failed');
+        const data = await res.json();
+        return data.url;  // full URL returned by backend
+      }
+
+      async function sendMessage() {
         if (!msgInput || !PARTNER_ID) return;
         const content = msgInput.value.trim();
-        if (!content) return;
+        const hasFile = fileInput && fileInput.files.length > 0;
+        if (!content && !hasFile) return;
         if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
         msgInput.value = '';
         msgInput.disabled = true;
+
+        let attachmentUrl = null;
+        if (hasFile) {
+          try {
+            attachmentUrl = await uploadFile(fileInput.files[0]);
+          } catch (e) {
+            console.error('[Upload]', e);
+          }
+          fileInput.value = '';
+          filePreview.classList.add('hidden');
+          filePreview.classList.remove('flex');
+        }
+
         const placeholder = document.getElementById('no-messages-placeholder');
         if (placeholder) placeholder.remove();
         maybeInsertDateSeparator(new Date());
-        pendingBubble = createBubble(content, true, true);
+        pendingBubble = createBubble(content || '', true, true, null, attachmentUrl);
         msgContainer.appendChild(pendingBubble);
         scrollToBottom();
 
-        ws.send(JSON.stringify({ type: 'message', to: PARTNER_ID, content }));
+        ws.send(JSON.stringify({ type: 'message', to: PARTNER_ID, content: content || '', attachment: attachmentUrl }));
       }
 
       if (msgSend) msgSend.addEventListener('click', sendMessage);

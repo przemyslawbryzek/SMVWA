@@ -38,7 +38,7 @@ function register(router) {
          WHERE id != ${req.user.userId}
            AND username ILIKE '%${q}%'
          ORDER BY username
-         LIMIT 20`
+         LIMIT ${PAGINATION.USER_SUGGESTIONS_LIMIT}`
       );
       return res.json(result.rows);
     } catch (error) {

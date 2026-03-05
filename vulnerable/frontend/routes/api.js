@@ -122,6 +122,100 @@ router.get('/api/posts/user/:id/html', async (req, res) => {
   }
 });
 
+const DEFAULT_CARD_TEMPLATE = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= user.username %> — Profile Card</title>
+  <style>
+    body { font-family: sans-serif; background: #111; color: #fff; display: flex; justify-content: center; padding: 40px; }
+    .card { background: #1c1c1c; border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; box-shadow: 0 8px 32px #0008; }
+    .avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; }
+    h1 { margin: 16px 0 4px; font-size: 1.5rem; }
+    .handle { color: #888; margin: 0 0 12px; }
+    .bio { color: #ccc; line-height: 1.5; }
+    .stats { display: flex; gap: 24px; margin-top: 16px; }
+    .stat span { display: block; font-size: 1.25rem; font-weight: bold; }
+    .stat small { color: #888; }
+    .joined { margin-top: 16px; color: #666; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img class="avatar" src="<%= user.profile_image %>" alt="avatar">
+    <h1><%= user.username %></h1>
+    <p class="handle">@<%= user.email %></p>
+    <p class="bio"><%= user.bio || 'No bio yet.' %></p>
+    <div class="stats">
+      <div class="stat"><span><%= user.followers_count %></span><small>Followers</small></div>
+      <div class="stat"><span><%= user.following_count %></span><small>Following</small></div>
+    </div>
+    <p class="joined">Member since <%= new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) %></p>
+  </div>
+</body>
+</html>`;
+
+/**
+ * POST /api/profile/export
+ * Renders a user-editable EJS template with the caller's profile data and
+ * returns the result as a downloadable HTML file ("business card").
+ *
+ * Body: { template?: string }  — omit to use the default card template
+ * Returns: text/html with Content-Disposition: attachment
+ *
+ * NOTE: must be registered BEFORE the catch-all router.all('/api/*') proxy.
+ */
+router.post('/api/profile/export', async (req, res) => {
+  const template = req.body.template || DEFAULT_CARD_TEMPLATE;
+
+  try {
+    const axiosConfig = getAxiosConfig(req);
+    let user = {};
+    try {
+      const userResponse = await axios.get(`${API_URL}/api/users/profile`, axiosConfig);
+      user = userResponse.data.user || {};
+    } catch (_) {
+      // unauthenticated export — user context stays empty
+    }
+
+    // Render caller-supplied (or default) EJS template with profile data.
+    const html = ejs.render(template, { user, parseContent });
+
+    const filename = `${(user.username || 'profile').replace(/[^a-z0-9_-]/gi, '_')}_card.html`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(html);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Chat file upload proxy — must be before catch-all to handle multipart/form-data
+router.post('/api/chat/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file' });
+    const formData = new FormData();
+    formData.append('file', req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype,
+    });
+    const response = await axios({
+      method: 'POST',
+      url: `${API_URL}/api/chat/upload`,
+      data: formData,
+      headers: {
+        ...formData.getHeaders(),
+        ...(req.cookies && req.cookies.auth ? { Cookie: `auth=${req.cookies.auth}` } : {}),
+      },
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    const data = error.response?.data || { error: 'Chat upload proxy error' };
+    res.status(status).json(data);
+  }
+});
+
 router.all('/api/*', async (req, res) => {
   try {
     const apiPath = req.path;

@@ -40,7 +40,7 @@ function validatePostInput(data) {
 
 function validatePaginationParams(query) {
   const page = parseInt(query.page) || 1;
-  const limit = parseInt(query.limit) || 20;
+  const limit = parseInt(query.limit) || PAGINATION.DEFAULT_LIMIT;
 
   if (page < 1) {
     throw new ValidationError('Page must be >= 1');
