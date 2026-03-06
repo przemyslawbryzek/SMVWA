@@ -76,6 +76,10 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chat', chatRoutes);
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', uptime: Math.floor(process.uptime()) });
+});
+
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
