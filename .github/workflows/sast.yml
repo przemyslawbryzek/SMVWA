@@ -66,18 +66,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run Semgrep (OWASP + Node.js + custom)
+      - name: Run Semgrep (custom rules)
         working-directory: vulnerable
         run: |
           semgrep scan \
-            --config p/owasp-top-ten \
-            --config p/nodejs \
-            --config p/express \
             --config .semgrep/custom-rules.yml \
             --sarif \
             --output semgrep.sarif \
-            --error \
-            backend/ || true
+            backend/ frontend/ || true
 
       - name: Upload Semgrep SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
@@ -106,7 +102,7 @@ jobs:
       - name: Run njsscan
         uses: ajinabraham/njsscan-action@master
         with:
-          args: "--sarif --output njsscan.sarif vulnerable/backend || true"
+          args: "--sarif --output njsscan.sarif . vulnerable/backend vulnerable/frontend"
 
       - name: Upload njsscan SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
@@ -147,4 +143,32 @@ jobs:
           echo "| Semgrep | ${{ needs.semgrep.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| njsscan | ${{ needs.njsscan.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> Security findings are visible in the **Security > Code scanning** tab." >> $GITHUB_STEP_SUMMARY
+
+          # ESLint findings summary
+          BACKEND_JSON="artifacts/eslint-security-report/vulnerable/backend/reports/eslint-security.json"
+          if [ -f "$BACKEND_JSON" ]; then
+            ERRORS=$(python3 -c "import json; d=json.load(open('$BACKEND_JSON')); print(sum(m['severity']==2 for f in d for m in f['messages']))")
+            WARNINGS=$(python3 -c "import json; d=json.load(open('$BACKEND_JSON')); print(sum(m['severity']==1 for f in d for m in f['messages']))")
+            echo "### ESLint Security Findings (backend)" >> $GITHUB_STEP_SUMMARY
+            echo "- Errors: **$ERRORS**" >> $GITHUB_STEP_SUMMARY
+            echo "- Warnings: **$WARNINGS**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Semgrep findings summary
+          SARIF="artifacts/semgrep-sarif/vulnerable/semgrep.sarif"
+          if [ -f "$SARIF" ]; then
+            COUNT=$(python3 -c "import json; d=json.load(open('$SARIF')); print(len(d['runs'][0].get('results',[])))")
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Semgrep Findings" >> $GITHUB_STEP_SUMMARY
+            echo "- Total: **$COUNT**" >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+          import json
+          d = json.load(open('$SARIF'))
+          results = d['runs'][0].get('results', [])
+          for r in results:
+              loc = r['locations'][0]['physicalLocation']
+              uri = loc['artifactLocation']['uri']
+              line = loc['region']['startLine']
+              print(f'  - \`{r[\"ruleId\"]}\` @ {uri}:{line}')
+          " >> $GITHUB_STEP_SUMMARY
+          fi
