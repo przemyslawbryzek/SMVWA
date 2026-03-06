@@ -96,12 +96,12 @@ jobs:
   njsscan:
     name: njsscan
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
       - name: Run njsscan
         uses: ajinabraham/njsscan-action@master
-        continue-on-error: true
         with:
           args: "vulnerable/backend vulnerable/frontend --sarif --output njsscan.sarif"
 
