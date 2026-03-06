@@ -4,3 +4,5 @@ node_modules/
 .DS_Store
 uploads/
 chat_files/
+reports/
+*.sarif

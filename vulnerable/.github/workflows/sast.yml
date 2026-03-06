@@ -1,0 +1,150 @@
+name: SAST
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Job 1: ESLint security plugin
+  # -----------------------------------------------------------------------
+  eslint-security:
+    name: ESLint Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install backend dependencies
+        working-directory: vulnerable/backend
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: vulnerable/frontend
+        run: npm ci
+
+      - name: Create reports directories
+        run: mkdir -p vulnerable/backend/reports vulnerable/frontend/reports
+
+      - name: Run ESLint on backend
+        working-directory: vulnerable/backend
+        run: npm run lint:security
+
+      - name: Run ESLint on frontend
+        working-directory: vulnerable/frontend
+        run: npm run lint:security
+
+      - name: Upload ESLint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-security-report
+          path: |
+            vulnerable/backend/reports/eslint-security.json
+            vulnerable/frontend/reports/eslint-security.json
+          retention-days: 30
+
+  # -----------------------------------------------------------------------
+  # Job 2: Semgrep — OWASP Top 10 + Node.js + custom rules
+  # -----------------------------------------------------------------------
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep (OWASP + Node.js + custom)
+        working-directory: vulnerable
+        run: |
+          semgrep scan \
+            --config p/owasp-top-ten \
+            --config p/nodejs \
+            --config p/express \
+            --config .semgrep/custom-rules.yml \
+            --sarif \
+            --output semgrep.sarif \
+            --error \
+            backend/ || true
+
+      - name: Upload Semgrep SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: vulnerable/semgrep.sarif
+          category: semgrep
+
+      - name: Upload Semgrep SARIF artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-sarif
+          path: vulnerable/semgrep.sarif
+          retention-days: 30
+
+  # -----------------------------------------------------------------------
+  # Job 3: njsscan — Node.js security scanner
+  # -----------------------------------------------------------------------
+  njsscan:
+    name: njsscan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run njsscan
+        uses: ajinabraham/njsscan-action@master
+        with:
+          args: "--sarif --output njsscan.sarif vulnerable/backend || true"
+
+      - name: Upload njsscan SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: njsscan.sarif
+          category: njsscan
+
+      - name: Upload njsscan SARIF artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: njsscan-sarif
+          path: njsscan.sarif
+          retention-days: 30
+
+  # -----------------------------------------------------------------------
+  # Job 4: Summary — requires all scans to finish
+  # -----------------------------------------------------------------------
+  sast-summary:
+    name: SAST Summary
+    runs-on: ubuntu-latest
+    needs: [eslint-security, semgrep, njsscan]
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Generate Job Summary
+        run: |
+          echo "## SAST Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Tool | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ESLint Security | ${{ needs.eslint-security.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Semgrep | ${{ needs.semgrep.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| njsscan | ${{ needs.njsscan.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> Security findings are visible in the **Security > Code scanning** tab." >> $GITHUB_STEP_SUMMARY

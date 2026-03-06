@@ -7,6 +7,7 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "lint": "eslint .",
+    "lint:security": "eslint . --format json --output-file reports/eslint-security.json || true",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "eslint": "^8.57.1",
+    "eslint-plugin-security": "^4.0.0",
     "nodemon": "^3.0.1",
     "prettier": "^3.8.1"
   }

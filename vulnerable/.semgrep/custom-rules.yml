@@ -1,0 +1,127 @@
+rules:
+  # CWE-89: SQL Injection via string concatenation
+  - id: sql-injection-string-concat
+    patterns:
+      - pattern: |
+          $QUERY = "..." + $INPUT
+      - pattern-either:
+          - pattern-inside: |
+              pool.query($QUERY, ...)
+          - pattern-inside: |
+              pool.query(`...${$INPUT}...`, ...)
+    message: >
+      Potential SQL Injection: user input concatenated directly into query string.
+      Use parameterized queries with $1, $2 placeholders instead.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 - Injection"
+      category: security
+
+  # CWE-89: SQL Injection via template literals
+  - id: sql-injection-template-literal
+    pattern: pool.query(`... ${$REQ.body.$FIELD} ...`, ...)
+    message: >
+      SQL Injection: req.body field interpolated directly into query.
+      Use parameterized queries.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 - Injection"
+      category: security
+
+  - id: sql-injection-template-literal-query
+    pattern: pool.query(`... ${$REQ.query.$FIELD} ...`, ...)
+    message: >
+      SQL Injection: req.query field interpolated directly into query.
+      Use parameterized queries.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 - Injection"
+      category: security
+
+  # CWE-502: Deserialization of Untrusted Data (node-serialize RCE)
+  - id: node-serialize-rce
+    pattern: unserialize($INPUT)
+    message: >
+      Remote Code Execution risk: node-serialize.unserialize() on untrusted input
+      allows RCE via IIFE payloads in serialized functions.
+      Never deserialize user-controlled data with node-serialize.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-502
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      category: security
+
+  # CWE-94: Server-Side Template Injection (EJS)
+  - id: ejs-ssti
+    pattern: ejs.render($INPUT, ...)
+    message: >
+      Server-Side Template Injection: ejs.render() called with potentially
+      user-controlled template string. Attacker can execute arbitrary code
+      via ejs template syntax.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-94
+      owasp: "A03:2021 - Injection"
+      category: security
+
+  # CWE-22: Path Traversal
+  - id: path-traversal-req-query
+    pattern: path.join($BASE, $REQ.query.$PARAM)
+    message: >
+      Path Traversal: unsanitized req.query parameter passed to path.join().
+      An attacker can use ../ sequences to access files outside intended directory.
+      Sanitize input with path.basename() or check resolved path starts with base dir.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-22
+      owasp: "A01:2021 - Broken Access Control"
+      category: security
+
+  - id: path-traversal-req-body
+    pattern: path.join($BASE, $REQ.body.$PARAM)
+    message: >
+      Path Traversal: unsanitized req.body parameter passed to path.join().
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-22
+      owasp: "A01:2021 - Broken Access Control"
+      category: security
+
+  # CWE-601: Open Redirect
+  - id: open-redirect-req-query
+    patterns:
+      - pattern: res.redirect($REQ.query.$PARAM)
+      - pattern-not: res.redirect($SANITIZED)
+    message: >
+      Open Redirect: res.redirect() called with unsanitized req.query value.
+      An attacker can redirect users to malicious sites.
+      Validate redirect target against an allowlist.
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      cwe: CWE-601
+      owasp: "A01:2021 - Broken Access Control"
+      category: security
+
+  # CWE-200: Sensitive data in response
+  - id: debug-token-in-response
+    pattern: res.json({..., debug_token: $TOKEN, ...})
+    message: >
+      Sensitive information disclosure: debug_token exposed in API response.
+      Remove debug tokens from production responses.
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      cwe: CWE-200
+      owasp: "A02:2021 - Cryptographic Failures"
+      category: security

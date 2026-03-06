@@ -3,6 +3,8 @@
 > **WARNING**
 > This application contains **intentional security vulnerabilities**. Run it only in an isolated environment (local machine / VM). Never expose it to a public network.
 
+![SAST](https://github.com/przemyslawbryzek/SMVWA/actions/workflows/sast.yml/badge.svg)
+
 ---
 
 ## Table of Contents
@@ -15,7 +17,8 @@
 6. [Database Management](#database-management)
 7. [Demo Accounts](#demo-accounts)
 8. [Tests](#tests)
-9. [Project Structure](#project-structure)
+9. [SAST](#sast)
+10. [Project Structure](#project-structure)
 
 ---
 
@@ -201,6 +204,45 @@ npm run test:watch        # watch mode (TDD)
 | `tests/integration/auth.routes.test.js` | Register, login, password reset |
 | `tests/integration/posts.routes.test.js` | Post CRUD, ownership checks |
 | `tests/integration/chat.routes.test.js` | File upload, path traversal, messages |
+
+---
+
+## SAST
+
+The project includes a static analysis pipeline that intentionally finds the vulnerabilities placed in the code.
+
+### Tools
+
+| Tool | Purpose |
+|---|---|
+| **ESLint + eslint-plugin-security** | Detects timing attacks, unsafe regex, object injection, `eval`, non-literal `fs` calls |
+| **Semgrep** | Custom rules for SQLi, RCE (node-serialize), SSTI (EJS), path traversal, open redirect |
+| **njsscan** | Node.js-specific security patterns from OWASP Mobile Security |
+
+### Run locally
+
+```bash
+# ESLint security scan
+cd backend/
+npm run lint:security          # outputs reports/eslint-security.json
+
+# Semgrep (requires semgrep installed: pip install semgrep)
+semgrep scan \
+  --config p/owasp-top-ten \
+  --config p/nodejs \
+  --config .semgrep/custom-rules.yml \
+  backend/
+
+# njsscan (requires: pip install njsscan)
+njsscan backend/
+```
+
+### CI/CD (GitHub Actions)
+
+The workflow at `.github/workflows/sast.yml` runs automatically on push/PR and:
+- Uploads SARIF results to **GitHub Security > Code scanning**
+- Posts a summary table to the **Actions** job summary
+- Archives JSON/SARIF artifacts for 30 days
 
 ---
 

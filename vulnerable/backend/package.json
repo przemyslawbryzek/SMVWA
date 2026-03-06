@@ -14,6 +14,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint .",
+    "lint:security": "eslint . --format json --output-file reports/eslint-security.json || true",
+    "sast": "npm run lint:security",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -30,6 +32,7 @@
   },
   "devDependencies": {
     "eslint": "^8.57.1",
+    "eslint-plugin-security": "^4.0.0",
     "jest": "^30.2.0",
     "nodemon": "^3.0.1",
     "prettier": "^3.8.1",
