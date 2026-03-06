@@ -3,7 +3,6 @@
 > **WARNING**
 > This application contains **intentional security vulnerabilities**. Run it only in an isolated environment (local machine / VM). Never expose it to a public network.
 
-![SAST](https://github.com/przemyslawbryzek/SMVWA/actions/workflows/sast.yml/badge.svg)
 
 ---
 
