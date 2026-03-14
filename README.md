@@ -36,7 +36,7 @@ This is a **comprehensive security engineering project** demonstrating:
 
 - **Offensive Skills:** Ability to identify, exploit, and chain multiple vulnerabilities
 - **Defensive Skills:** Security code review, threat modeling, risk assessment
-- **Full-Stack Knowledge:** Frontend XSS, backend SQLi, authentication design, DevOps
+- **Full-Stack Knowledge:** Frontend, backend, authentication design, DevOps
 - **Reporting:** Professional vulnerability documentation with PoC and remediation guidance
 - **Testing:** Manual testing + SAST/DAST tooling expertise (Semgrep, njsscan, sqlmap, Burp)
 
