@@ -13,9 +13,12 @@ const request = require('supertest');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const bcrypt = require('bcrypt');
-const serialize = require('node-serialize');
+const jwt = require('jsonwebtoken');
 const pool = require('../../db/pool');
 const authRoutes = require('../../routes/auth');
+const { authMiddleware } = require('../../middleware/auth');
+const { AUTH } = require('../../config/constants');
+const { _resetTokenBlacklist } = require('../../utils/tokenBlacklist');
 
 // ─── app factory ─────────────────────────────────────────────────────────────
 
@@ -24,6 +27,9 @@ function buildApp() {
   app.use(express.json());
   app.use(cookieParser());
   app.use('/api', authRoutes);
+  app.get('/api/protected', authMiddleware, (req, res) => {
+    res.json({ ok: true, userId: req.user.userId });
+  });
   return app;
 }
 
@@ -33,8 +39,9 @@ beforeAll(() => {
   app = buildApp();
 });
 
-afterEach(() => {
+afterEach(async () => {
   jest.resetAllMocks();
+  await _resetTokenBlacklist();
 });
 
 beforeEach(() => {
@@ -107,7 +114,7 @@ describe('POST /api/login', () => {
     pool.query.mockResolvedValueOnce({ rows: [] });
     const res = await request(app).post('/api/login').send({ email: 'no@one.com', password: 'x' });
     expect(res.status).toBe(401);
-    expect(res.body.error).toMatch(/email/i);
+    expect(res.body.error).toMatch(/credentials/i);
   });
 
   it('returns 401 when password is wrong', async () => {
@@ -121,7 +128,7 @@ describe('POST /api/login', () => {
       .send({ email: 'a@a.com', password: 'wrong' });
 
     expect(res.status).toBe(401);
-    expect(res.body.error).toMatch(/password/i);
+    expect(res.body.error).toMatch(/credentials/i);
   });
 
   it('returns 200 and sets auth cookie on success', async () => {
@@ -149,7 +156,7 @@ describe('POST /api/login', () => {
     const res = await request(app).post('/api/login').send({ email: 'a@a.com', password: 'pass' });
 
     expect(res.body.userId).toBe(42);
-    const decoded = serialize.unserialize(Buffer.from(res.body.token, 'base64').toString());
+    const decoded = jwt.verify(res.body.token, AUTH.JWT_SECRET);
     expect(decoded.userId).toBe(42);
     expect(decoded.role).toBe('user');
   });
@@ -164,8 +171,59 @@ describe('POST /api/login', () => {
       .post('/api/login')
       .send({ email: 'admin@a.com', password: 'pass' });
 
-    const decoded = serialize.unserialize(Buffer.from(res.body.token, 'base64').toString());
+    const decoded = jwt.verify(res.body.token, AUTH.JWT_SECRET);
     expect(decoded.role).toBe('admin');
+  });
+});
+
+// ─── POST /api/logout ───────────────────────────────────────────────────────
+
+describe('POST /api/logout', () => {
+  it('returns 401 without auth cookie', async () => {
+    const res = await request(app).post('/api/logout').send({});
+    expect(res.status).toBe(401);
+  });
+
+  it('blacklists token and blocks future access with the same token', async () => {
+    const hash = await bcrypt.hash('Secret1!', 1);
+    pool.query.mockResolvedValueOnce({
+      rows: [{ id: 7, isadmin: false, email: 'alice@smvwa.local', password: hash }],
+    });
+
+    const loginRes = await request(app)
+      .post('/api/login')
+      .send({ email: 'alice@smvwa.local', password: 'Secret1!' });
+
+    const authCookie = loginRes.headers['set-cookie'][0].split(';')[0];
+
+    // 1) protected endpoint blacklist check before logout
+    pool.query.mockResolvedValueOnce({ rows: [] });
+
+    const beforeLogout = await request(app)
+      .get('/api/protected')
+      .set('Cookie', authCookie);
+    expect(beforeLogout.status).toBe(200);
+
+    // 2) logout: auth middleware blacklist check + blacklist insert
+    pool.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const logoutRes = await request(app)
+      .post('/api/logout')
+      .set('Cookie', authCookie)
+      .send({});
+    expect(logoutRes.status).toBe(200);
+    expect(logoutRes.body.success).toBe(true);
+
+    // 3) protected endpoint blacklist check after logout -> blocked
+    pool.query.mockResolvedValueOnce({ rows: [{ token_hash: 'revoked' }] });
+
+    const afterLogout = await request(app)
+      .get('/api/protected')
+      .set('Cookie', authCookie);
+    expect(afterLogout.status).toBe(401);
+    expect(afterLogout.body.error).toMatch(/revoked/i);
   });
 });
 

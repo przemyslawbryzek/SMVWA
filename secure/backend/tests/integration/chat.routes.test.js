@@ -17,16 +17,21 @@ jest.mock('../../db/pool');
 const request = require('supertest');
 const express = require('express');
 const cookieParser = require('cookie-parser');
-const serialize = require('node-serialize');
+const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 const pool = require('../../db/pool');
 const chatRoutes = require('../../routes/chat');
+const { AUTH } = require('../../config/constants');
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function makeToken(payload) {
-  return Buffer.from(serialize.serialize(payload)).toString('base64');
+  return jwt.sign(payload, AUTH.JWT_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
+}
+
+function mockAuthTokenNotRevoked() {
+  pool.query.mockResolvedValueOnce({ rows: [] });
 }
 
 const USER_TOKEN = makeToken({ userId: 1, role: 'user' });
@@ -189,6 +194,7 @@ describe('GET /api/chat/conversations', () => {
   });
 
   it('returns 200 with conversation list', async () => {
+    mockAuthTokenNotRevoked();
     pool.query.mockResolvedValueOnce({ rows: [] });
 
     const res = await request(app)
@@ -211,6 +217,7 @@ describe('POST /api/chat/conversations/:id/messages', () => {
   });
 
   it('returns 400 when content is missing', async () => {
+    mockAuthTokenNotRevoked();
     const res = await request(app)
       .post('/api/chat/conversations/2/messages')
       .set('Cookie', `auth=${USER_TOKEN}`)
@@ -219,6 +226,7 @@ describe('POST /api/chat/conversations/:id/messages', () => {
   });
 
   it('stores message and returns 201', async () => {
+    mockAuthTokenNotRevoked();
     const msg = {
       id: 1,
       sender_id: 1,

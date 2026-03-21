@@ -47,6 +47,7 @@ async function dropAll() {
     DROP TABLE IF EXISTS
       reported_posts,
       reported_users,
+      revoked_tokens,
       password_resets,
       messages,
       likes,

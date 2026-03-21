@@ -1,5 +1,7 @@
 module.exports = {
-  INTERNAL_SECRET: process.env.INTERNAL_SECRET || 'smvwa-internal-secret',
+  AUTH: {
+    JWT_SECRET: process.env.JWT_SECRET || 'smvwa-dev-jwt-secret-change-me',
+  },
   PAGINATION: {
     DEFAULT_LIMIT: 20,
     MAX_LIMIT: 100,

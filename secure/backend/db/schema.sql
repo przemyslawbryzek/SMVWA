@@ -129,6 +129,12 @@ CREATE TABLE IF NOT EXISTS password_resets (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+  token_hash VARCHAR(64) PRIMARY KEY,
+  expires_at TIMESTAMP NOT NULL,
+  revoked_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS messages (
   id SERIAL PRIMARY KEY,
   sender_id INTEGER NOT NULL,
@@ -157,6 +163,7 @@ CREATE INDEX IF NOT EXISTS idx_followers_follower  ON followers (follower_id);
 CREATE INDEX IF NOT EXISTS idx_followers_following ON followers (following_id);
 CREATE INDEX IF NOT EXISTS idx_messages_sender     ON messages (sender_id);
 CREATE INDEX IF NOT EXISTS idx_messages_receiver   ON messages (receiver_id);
+CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires_at ON revoked_tokens (expires_at);
 
 -- Add attachment column to existing installations
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment TEXT DEFAULT NULL;

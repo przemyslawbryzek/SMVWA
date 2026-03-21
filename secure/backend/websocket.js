@@ -1,7 +1,9 @@
 const WebSocket = require('ws');
-const serialize = require('node-serialize');
+const jwt = require('jsonwebtoken');
 const cookie = require('cookie');
 const pool = require('./db/pool');
+const { AUTH } = require('./config/constants');
+const { isTokenBlacklisted } = require('./utils/tokenBlacklist');
 
 const clients = new Map();
 
@@ -91,15 +93,19 @@ function createMessageHandlers(ws, userId) {
 function setupWebSocket(server) {
   const wss = new WebSocket.Server({ server });
 
-  wss.on('connection', (ws, req) => {
+  wss.on('connection', async (ws, req) => {
     const cookies = cookie.parse(req.headers.cookie || '');
     const rawCookie = cookies.auth || null;
     let userId = null;
 
     if (rawCookie) {
+      if (await isTokenBlacklisted(rawCookie)) {
+        ws.close(4001, 'Unauthorized');
+        return;
+      }
+
       try {
-        const decoded = Buffer.from(rawCookie, 'base64').toString('utf8');
-        const payload = serialize.unserialize(decoded);
+        const payload = jwt.verify(rawCookie, AUTH.JWT_SECRET);
         userId = payload.userId ? String(payload.userId) : null;
       } catch {
         // Invalid cookie

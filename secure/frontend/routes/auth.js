@@ -18,7 +18,12 @@ router.post('/login', async (req, res) => {
     );
     const authToken = response.data.token;
 
-    res.cookie('auth', authToken, { httpOnly: true, secure: false });
+    res.cookie('auth', authToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     const redirectTo = req.body.next || req.query.next || '/';
     res.redirect(redirectTo);
   } catch (error) {
@@ -46,8 +51,26 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.get('/logout', (req, res) => {
-  res.clearCookie('auth');
+router.get('/logout', async (req, res) => {
+  try {
+    await axios.post(
+      `${API_URL}/api/auth/logout`,
+      {},
+      {
+        withCredentials: true,
+        headers: req.cookies?.auth ? { Cookie: `auth=${req.cookies.auth}` } : {},
+      }
+    );
+  } catch (error) {
+    // Even if API logout fails, clear frontend cookie to complete local sign-out.
+    console.warn('Backend logout failed:', error.response?.data?.error || error.message);
+  }
+
+  res.clearCookie('auth', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
   res.redirect('/login');
 });
 

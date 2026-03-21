@@ -1,11 +1,11 @@
-const serialize = require('node-serialize');
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../config');
 
 function decodeAuthCookie(req) {
   const raw = req.cookies?.auth;
   if (!raw) {return null;}
   try {
-    const decoded = Buffer.from(raw, 'base64').toString('utf-8');
-    return serialize.unserialize(decoded);
+    return jwt.verify(raw, JWT_SECRET);
   } catch {
     return null;
   }

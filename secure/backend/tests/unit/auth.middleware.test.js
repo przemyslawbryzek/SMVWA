@@ -1,13 +1,18 @@
 'use strict';
 
-const serialize = require('node-serialize');
+jest.mock('../../db/pool');
+
+const jwt = require('jsonwebtoken');
+const pool = require('../../db/pool');
 const { authMiddleware, optionalAuth, requireAdmin } = require('../../middleware/auth');
+const { AUTH } = require('../../config/constants');
+const { blacklistToken, _resetTokenBlacklist } = require('../../utils/tokenBlacklist');
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 /** Create a valid auth cookie value for the given payload */
 function makeToken(payload) {
-  return Buffer.from(serialize.serialize(payload)).toString('base64');
+  return jwt.sign(payload, AUTH.JWT_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
 }
 
 /** Build lightweight mock req / res / next */
@@ -24,9 +29,18 @@ function mockRRN(reqOverrides = {}) {
 // ─── authMiddleware ───────────────────────────────────────────────────────────
 
 describe('authMiddleware', () => {
-  it('returns 401 when no cookie is present', () => {
+  beforeEach(() => {
+    pool.query.mockResolvedValue({ rows: [] });
+  });
+
+  afterEach(async () => {
+    jest.resetAllMocks();
+    await _resetTokenBlacklist();
+  });
+
+  it('returns 401 when no cookie is present', async () => {
     const { req, res, next } = mockRRN();
-    authMiddleware(req, res, next);
+    await authMiddleware(req, res, next);
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringMatching(/unauthorize/i) })
@@ -34,48 +48,54 @@ describe('authMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when cookie has invalid content', () => {
+  it('returns 400 when cookie has invalid content', async () => {
     const { req, res, next } = mockRRN({ cookies: { auth: '!!!not-base64-json!!!' } });
-    authMiddleware(req, res, next);
+    await authMiddleware(req, res, next);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('calls next and populates req.user for a valid token', () => {
+  it('calls next and populates req.user for a valid token', async () => {
     const payload = { userId: 42, role: 'user' };
     const { req, res, next } = mockRRN({ cookies: { auth: makeToken(payload) } });
-    authMiddleware(req, res, next);
+    await authMiddleware(req, res, next);
     expect(next).toHaveBeenCalledTimes(1);
     expect(req.user.userId).toBe(42);
     expect(req.user.role).toBe('user');
   });
 
-  it('accepts admin role in token', () => {
+  it('accepts admin role in token', async () => {
     const { req, res, next } = mockRRN({
       cookies: { auth: makeToken({ userId: 1, role: 'admin' }) },
     });
-    authMiddleware(req, res, next);
+    await authMiddleware(req, res, next);
     expect(next).toHaveBeenCalled();
     expect(req.user.role).toBe('admin');
   });
 
-  it('accepts x-internal-secret header and bypasses cookie check', () => {
-    const { req, res, next } = mockRRN({
-      headers: { 'x-internal-secret': 'smvwa-internal-secret' },
-    });
-    authMiddleware(req, res, next);
-    expect(next).toHaveBeenCalled();
-    expect(req.user.role).toBe('internal');
-    expect(req.user.isInternal).toBe(true);
+  it('returns 401 when no valid credentials are present', async () => {
+    const { req, res, next } = mockRRN();
+    await authMiddleware(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
   });
 
-  it('does NOT accept a wrong internal secret', () => {
-    const { req, res, next } = mockRRN({
-      headers: { 'x-internal-secret': 'wrong-secret' },
+  it('returns 401 when token has been revoked', async () => {
+    pool.query.mockImplementation((sql) => {
+      if (typeof sql === 'string' && sql.includes('SELECT 1') && sql.includes('revoked_tokens')) {
+        return Promise.resolve({ rows: [{ token_hash: 'revoked' }] });
+      }
+      return Promise.resolve({ rows: [] });
     });
-    authMiddleware(req, res, next);
-    // No valid cookie either → 401
+
+    const token = makeToken({ userId: 42, role: 'user' });
+    await blacklistToken(token, Math.floor(Date.now() / 1000) + 3600);
+
+    const { req, res, next } = mockRRN({ cookies: { auth: token } });
+    await authMiddleware(req, res, next);
+
     expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: expect.stringMatching(/revoked/i) }));
     expect(next).not.toHaveBeenCalled();
   });
 });
@@ -83,32 +103,36 @@ describe('authMiddleware', () => {
 // ─── optionalAuth ─────────────────────────────────────────────────────────────
 
 describe('optionalAuth', () => {
-  it('sets req.user to null when no cookie is present', () => {
+  beforeEach(() => {
+    pool.query.mockResolvedValue({ rows: [] });
+  });
+
+  it('sets req.user to null when no cookie is present', async () => {
     const { req, res, next } = mockRRN();
-    optionalAuth(req, res, next);
+    await optionalAuth(req, res, next);
     expect(next).toHaveBeenCalledTimes(1);
     expect(req.user).toBeNull();
   });
 
-  it('populates req.user for a valid cookie', () => {
+  it('populates req.user for a valid cookie', async () => {
     const payload = { userId: 7, role: 'user' };
     const { req, res, next } = mockRRN({ cookies: { auth: makeToken(payload) } });
-    optionalAuth(req, res, next);
+    await optionalAuth(req, res, next);
     expect(next).toHaveBeenCalled();
     expect(req.user.userId).toBe(7);
   });
 
-  it('sets req.user to null for an invalid cookie (does NOT respond 400)', () => {
+  it('sets req.user to null for an invalid cookie (does NOT respond 400)', async () => {
     const { req, res, next } = mockRRN({ cookies: { auth: '!garbage!' } });
-    optionalAuth(req, res, next);
+    await optionalAuth(req, res, next);
     expect(next).toHaveBeenCalled();
     expect(req.user).toBeNull();
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('never calls res.status in any scenario', () => {
+  it('never calls res.status in any scenario', async () => {
     const { req, res, next } = mockRRN({ cookies: { auth: makeToken({ userId: 1, role: 'user' }) } });
-    optionalAuth(req, res, next);
+    await optionalAuth(req, res, next);
     expect(res.status).not.toHaveBeenCalled();
   });
 });
@@ -148,10 +172,4 @@ describe('requireAdmin', () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('calls next when user role is "internal"', () => {
-    const { req, res, next } = mockRRN();
-    req.user = { userId: 0, role: 'internal', isInternal: true };
-    requireAdmin(req, res, next);
-    expect(next).toHaveBeenCalledTimes(1);
-  });
 });

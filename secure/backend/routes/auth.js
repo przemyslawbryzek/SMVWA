@@ -1,8 +1,10 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const serialize = require('node-serialize');
+const jwt = require('jsonwebtoken');
 const pool = require('../db/pool');
-const { HTTP_STATUS } = require('../config/constants');
+const { AUTH, HTTP_STATUS } = require('../config/constants');
+const { authMiddleware } = require('../middleware/auth');
+const { blacklistToken } = require('../utils/tokenBlacklist');
 const { handleError } = require('../utils/routeHelpers');
 
 const router = express.Router();
@@ -36,22 +38,41 @@ router.post('/login', async (req, res) => {
     const result = await pool.query(sql, [email]);
 
     if (result.rows.length === 0) {
-      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ error: 'Invalid email' });
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ error: 'Invalid credentials' });
     }
 
     const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
-      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ error: 'Invalid password' });
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ error: 'Invalid credentials' });
     }
     const payload = { userId: user.id, role: user.isadmin ? 'admin' : 'user' };
-    const token = Buffer.from(serialize.serialize(payload)).toString('base64');
-    res.cookie('auth', token);
+    const token = jwt.sign(payload, AUTH.JWT_SECRET, {
+      algorithm: 'HS256',
+      expiresIn: '7d',
+    });
+    res.cookie('auth', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     return res.json({ success: true, token, userId: user.id });
   } catch (error) {
     return handleError(res, error, 'Login error');
   }
+});
+
+router.post('/logout', authMiddleware, async (req, res) => {
+  const authToken = req.cookies?.auth;
+  await blacklistToken(authToken, req.user?.exp);
+  res.clearCookie('auth', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
+  return res.json({ success: true, message: 'Logged out successfully' });
 });
 
 router.post('/forgot-password', async (req, res) => {

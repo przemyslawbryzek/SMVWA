@@ -11,14 +11,19 @@ jest.mock('../../db/pool');
 const request = require('supertest');
 const express = require('express');
 const cookieParser = require('cookie-parser');
-const serialize = require('node-serialize');
+const jwt = require('jsonwebtoken');
 const pool = require('../../db/pool');
 const postsRouter = require('../../routes/posts');
+const { AUTH } = require('../../config/constants');
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function makeToken(payload) {
-  return Buffer.from(serialize.serialize(payload)).toString('base64');
+  return jwt.sign(payload, AUTH.JWT_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
+}
+
+function mockAuthTokenNotRevoked() {
+  pool.query.mockResolvedValueOnce({ rows: [] });
 }
 
 const USER_TOKEN   = makeToken({ userId: 1, role: 'user' });
@@ -99,6 +104,7 @@ describe('POST /api/posts', () => {
   });
 
   it('returns 400 when content is missing', async () => {
+    mockAuthTokenNotRevoked();
     const res = await request(app)
       .post('/api/posts')
       .set('Cookie', `auth=${USER_TOKEN}`)
@@ -108,6 +114,7 @@ describe('POST /api/posts', () => {
   });
 
   it('returns 400 when content is empty string', async () => {
+    mockAuthTokenNotRevoked();
     const res = await request(app)
       .post('/api/posts')
       .set('Cookie', `auth=${USER_TOKEN}`)
@@ -116,6 +123,7 @@ describe('POST /api/posts', () => {
   });
 
   it('returns 400 when content exceeds 5000 chars', async () => {
+    mockAuthTokenNotRevoked();
     const res = await request(app)
       .post('/api/posts')
       .set('Cookie', `auth=${USER_TOKEN}`)
@@ -124,6 +132,7 @@ describe('POST /api/posts', () => {
   });
 
   it('returns 201 with post data on success', async () => {
+    mockAuthTokenNotRevoked();
     pool.query.mockResolvedValueOnce({ rows: [BASE_POST] });
 
     const res = await request(app)
@@ -137,6 +146,7 @@ describe('POST /api/posts', () => {
   });
 
   it('returns 500 when DB throws', async () => {
+    mockAuthTokenNotRevoked();
     pool.query.mockRejectedValueOnce(new Error('DB error'));
 
     const res = await request(app)
@@ -160,6 +170,7 @@ describe('GET /api/posts/:id', () => {
   });
 
   it('returns 200 with enriched post data', async () => {
+    mockAuthTokenNotRevoked();
     pool.query.mockResolvedValueOnce({ rows: [BASE_POST] }); // SELECT * FROM posts
     mockEnrichPost(BASE_POST, true); // userId=1 in USER_TOKEN cookie
 
@@ -189,6 +200,7 @@ describe('PUT /api/posts/:id', () => {
   });
 
   it('returns 400 when updated content is empty', async () => {
+    mockAuthTokenNotRevoked();
     const res = await request(app)
       .put('/api/posts/1')
       .set('Cookie', `auth=${USER_TOKEN}`)
@@ -197,6 +209,7 @@ describe('PUT /api/posts/:id', () => {
   });
 
   it('returns 404 when post does not exist', async () => {
+    mockAuthTokenNotRevoked();
     pool.query.mockResolvedValueOnce({ rows: [] }); // SELECT * FROM posts WHERE id=...
 
     const res = await request(app)
@@ -208,6 +221,7 @@ describe('PUT /api/posts/:id', () => {
   });
 
   it('returns 403 when user does not own the post', async () => {
+    mockAuthTokenNotRevoked();
     pool.query.mockResolvedValueOnce({ rows: [{ ...BASE_POST, user_id: 999 }] });
 
     const res = await request(app)
@@ -219,6 +233,7 @@ describe('PUT /api/posts/:id', () => {
   });
 
   it('returns 200 when owner updates the post', async () => {
+    mockAuthTokenNotRevoked();
     const updatedPost = { ...BASE_POST, content: 'Updated content' };
     pool.query
       .mockResolvedValueOnce({ rows: [BASE_POST] })    // SELECT (ownership check)
@@ -243,6 +258,7 @@ describe('DELETE /api/posts/:id', () => {
   });
 
   it('returns 404 when post does not exist', async () => {
+    mockAuthTokenNotRevoked();
     pool.query.mockResolvedValueOnce({ rows: [] });
 
     const res = await request(app)
@@ -253,6 +269,7 @@ describe('DELETE /api/posts/:id', () => {
   });
 
   it('returns 403 when user does not own the post', async () => {
+    mockAuthTokenNotRevoked();
     // user_id in token=1, post owner=999
     pool.query.mockResolvedValueOnce({ rows: [{ ...BASE_POST, user_id: 999 }] });
 
@@ -264,6 +281,7 @@ describe('DELETE /api/posts/:id', () => {
   });
 
   it('returns 200 when the owner deletes the post', async () => {
+    mockAuthTokenNotRevoked();
     pool.query
       .mockResolvedValueOnce({ rows: [BASE_POST] })  // SELECT (ownership check)
       .mockResolvedValueOnce({ rows: [] });            // DELETE
