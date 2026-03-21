@@ -29,11 +29,13 @@
         <h2 class="text-xl font-bold mb-1">Profile Card Export</h2>
         <p class="text-sm text-gray-500 mb-3">
             Download your profile as a standalone HTML business card.
-            Customise the template — variables available:
-            <code class="bg-stone-800 px-1 rounded">&lt;%= user.username %&gt;</code>,
-            <code class="bg-stone-800 px-1 rounded">&lt;%= user.bio %&gt;</code>,
-            <code class="bg-stone-800 px-1 rounded">&lt;%= user.followers_count %&gt;</code>,
-            <code class="bg-stone-800 px-1 rounded">&lt;%= user.profile_image %&gt;</code>
+            Customise the template using safe placeholders:
+            <code class="bg-stone-800 px-1 rounded">{{ user.username }}</code>,
+            <code class="bg-stone-800 px-1 rounded">{{ user.tag }}</code>,
+            <code class="bg-stone-800 px-1 rounded">{{ user.bio }}</code>,
+            <code class="bg-stone-800 px-1 rounded">{{ user.followers_count }}</code>,
+            <code class="bg-stone-800 px-1 rounded">{{ user.profile_image }}</code>,
+            <code class="bg-stone-800 px-1 rounded">{{ user.joined_date }}</code>
         </p>
         <textarea id="card-template-input" rows="12"
             placeholder="Leave blank to use the default card template."

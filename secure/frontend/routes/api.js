@@ -11,6 +11,63 @@ const { API_URL } = require('../config');
 const router = express.Router();
 const upload = multer();
 
+const MAX_EXPORT_TEMPLATE_LENGTH = 20000;
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatJoinedDate(createdAt) {
+  if (!createdAt) {
+    return '';
+  }
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+}
+
+function renderProfileTemplateSafe(template, user) {
+  if (typeof template !== 'string' || template.length === 0) {
+    return '';
+  }
+  if (template.length > MAX_EXPORT_TEMPLATE_LENGTH) {
+    throw new Error('Template is too large');
+  }
+  if (template.includes('<%') || template.includes('%>')) {
+    throw new Error('EJS syntax is not allowed in export template');
+  }
+
+  return template.replace(/\{\{\s*user\.([a-zA-Z0-9_]+)\s*\}\}/g, (_, field) => {
+    switch (field) {
+      case 'username':
+        return escapeHtml(user.username || '');
+      case 'tag':
+        return escapeHtml(user.tag || user.username || '');
+      case 'bio':
+        return escapeHtml(user.bio || 'No bio yet.');
+      case 'profile_image':
+        return escapeHtml(user.profile_image || '');
+      case 'followers_count':
+        return escapeHtml(user.followers_count ?? 0);
+      case 'following_count':
+        return escapeHtml(user.following_count ?? 0);
+      case 'created_at':
+        return escapeHtml(user.created_at || '');
+      case 'joined_date':
+        return escapeHtml(formatJoinedDate(user.created_at));
+      default:
+        return '';
+    }
+  });
+}
+
 router.post('/api/upload', upload.array('attachments', 5), async (req, res) => {
   try {
     const axiosConfig = getAxiosConfig(req);
@@ -127,7 +184,7 @@ const DEFAULT_CARD_TEMPLATE = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title><%= user.username %> — Profile Card</title>
+  <title>{{ user.username }} - Profile Card</title>
   <style>
     body { font-family: sans-serif; background: #111; color: #fff; display: flex; justify-content: center; padding: 40px; }
     .card { background: #1c1c1c; border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; box-shadow: 0 8px 32px #0008; }
@@ -143,25 +200,28 @@ const DEFAULT_CARD_TEMPLATE = `<!DOCTYPE html>
 </head>
 <body>
   <div class="card">
-    <img class="avatar" src="<%= user.profile_image %>" alt="avatar">
-    <h1><%= user.username %></h1>
-    <p class="handle">@<%= user.tag || user.username %></p>
-    <p class="bio"><%= user.bio || 'No bio yet.' %></p>
+    <img class="avatar" src="{{ user.profile_image }}" alt="avatar">
+    <h1>{{ user.username }}</h1>
+    <p class="handle">@{{ user.tag }}</p>
+    <p class="bio">{{ user.bio }}</p>
     <div class="stats">
-      <div class="stat"><span><%= user.followers_count %></span><small>Followers</small></div>
-      <div class="stat"><span><%= user.following_count %></span><small>Following</small></div>
+      <div class="stat"><span>{{ user.followers_count }}</span><small>Followers</small></div>
+      <div class="stat"><span>{{ user.following_count }}</span><small>Following</small></div>
     </div>
-    <p class="joined">Member since <%= new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) %></p>
+    <p class="joined">Member since {{ user.joined_date }}</p>
   </div>
 </body>
 </html>`;
 
 /**
  * POST /api/profile/export
- * Renders a user-editable EJS template with the caller's profile data and
+ * Renders a user-editable HTML template with safe {{ user.* }} placeholders and
  * returns the result as a downloadable HTML file ("business card").
  *
- * Body: { template?: string }  — omit to use the default card template
+ * Body: { template?: string }  — omit to use the default card template.
+ * Supported placeholders: {{ user.username }}, {{ user.tag }}, {{ user.bio }},
+ * {{ user.profile_image }}, {{ user.followers_count }}, {{ user.following_count }},
+ * {{ user.joined_date }}
  * Returns: text/html with Content-Disposition: attachment
  *
  * NOTE: must be registered BEFORE the catch-all router.all('/api/*') proxy.
@@ -179,8 +239,7 @@ router.post('/api/profile/export', async (req, res) => {
       // unauthenticated export — user context stays empty
     }
 
-    // Render caller-supplied (or default) EJS template with profile data.
-    const html = ejs.render(template, { user, parseContent });
+    const html = renderProfileTemplateSafe(template, user);
 
     const filename = `${(user.username || 'profile').replace(/[^a-z0-9_-]/gi, '_')}_card.html`;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -194,7 +253,9 @@ router.post('/api/profile/export', async (req, res) => {
 // Chat file upload proxy — must be before catch-all to handle multipart/form-data
 router.post('/api/chat/upload', upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'No file' });
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file' });
+    }
     const axiosConfig = getAxiosConfig(req);
     const formData = new FormData();
     formData.append('file', req.file.buffer, {
