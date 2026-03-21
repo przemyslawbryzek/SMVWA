@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <title>SMVWA</title>
+</head>
+<body class="bg-black">
+    <div class="flex flex-row h-screen w-screen fixed">
+        <%- include('../components/sidebar.ejs') %>
+        <div class="text-white h-full flex-1 min-w-0 overflow-y-auto">
+            <%- include(`./pages/${page}`) %>
+        </div>
+        <div class="hidden xl:block text-white border-stone-700 border-l h-full xl:w-2/7 flex-shrink-0">
+            <% if (page !== 'explore.ejs') { %>
+                <div class="relative m-4">
+                    <img class="size-5 absolute left-3 top-1/2 transform -translate-y-1/2" src="https://img.icons8.com/?size=100&id=7695&format=png&color=FFFFFF">
+                    <form method="GET" action="/explore">
+                        <input type="text" name="q" placeholder="Search" class="p-2 pl-10 w-full rounded-full bg-black border border-stone-700 focus:outline-none focus:border-blue-500">
+                    </form>
+                </div>
+            <% } %>
+            <div class="flex flex-col m-4 p-4  rounded-lg border border-stone-700">  
+                <% if (page !== 'post.ejs') { %>
+                    <p class="font-bold">WHO TO FOLLOW</p>
+                    <div>
+                        <% if (suggestions && suggestions.length > 0) { %>
+                            <% suggestions.forEach(suggestedUser => { %>
+                                <%- include('../components/profileBar.ejs', { User: suggestedUser }) %>
+                            <% }) %>
+                        <% } else { %>
+                            <p class="text-gray-500 mt-4">No suggestions available</p>
+                        <% } %>
+                    </div>
+                <% } else { %>
+                    <p class="font-bold">Relevant people</p>
+                    <div>
+                        <% if (relevantPeople && relevantPeople.length > 0) { %>
+                            <% relevantPeople.forEach(person => { %>
+                                <%- include('../components/profileBar.ejs', { User: person }) %>
+                            <% }) %>
+                        <% } else { %>
+                            <p class="text-gray-500 mt-4">No relevant people found</p>
+                        <% } %>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+    <%- include('../components/quoteModal') %>
+    <%- include('../components/reportModal') %>
+    <script src="/js/api.js"></script>
+    <script src="/js/postForm.js"></script>
+    <script src="/js/interactions.js"></script>
+    <script src="/js/moreMenu.js"></script>
+    <script src="/js/actions.js"></script>
+    <script src="/js/dates.js"></script>
+    <script src="/js/userMenu.js"></script>
+    <script src="/js/linkPreview.js"></script>
+    <script>
+      window.CURRENT_USER = <% if (user) { %>{ id: <%- user.id %>, role: '<%- user.role %>' }<% } else { %>null<% } %>;
+    </script>
+</body>
+</html>

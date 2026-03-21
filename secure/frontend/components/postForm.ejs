@@ -1,0 +1,79 @@
+<% if (user) { %>
+<div class="p-4 border-stone-700 border-b-1 flex flex-row gap-4 w-full">
+    <img class="size-10 rounded-full" id="profile-img" src="<%= user.profile_image || 'https://via.placeholder.com/40' %>" alt="Profile">
+    <form id="post-form" class="flex flex-col gap-3 w-full" data-root-id="<% if (post) { %><%= post.root_id || post.id %><% } else { %>null<% } %>"
+        data-parent-id="<% if (post) { %><%= post.id %><% } else { %>null<% } %>">
+        <input type="file" id="attachment-input" class="hidden" accept="image/*,video/*" multiple>
+        <textarea name="content" placeholder="<%= post ? 'Post your reply' : 'What\'s happening?' %>" class="p-2 bg-black text-white focus:outline-none h-24" required></textarea>
+        <div id="attachments-preview" class="flex gap-2 flex-wrap"></div>
+        <div id="link-preview-card" class="hidden border border-stone-700 rounded overflow-hidden text-sm"></div>
+        <div class="flex flex-row justify-between items-center w-full">
+            <div class="flex gap-3 items-center">
+                <button type="button" id="add-attachment-btn">
+                    <img class="size-5" src="https://img.icons8.com/?size=100&id=cD26kdwTbCzt&format=png&color=00BFFF" alt="Add Attachment">
+                </button>
+            </div>
+            <button type="submit" class="self-end px-4 py-2 rounded-full bg-white text-black hover:bg-gray-200">Post</button>
+        </div>
+    </form>
+</div>
+<script>
+  (function() {
+    const textarea = document.querySelector('#post-form textarea[name="content"]');
+    const card = document.getElementById('link-preview-card');
+    let lastFetchedUrl = null;
+    let debounceTimer = null;
+
+    function extractFirstUrl(text) {
+      const match = text.match(/https?:\/\/[^\s]+/);
+      return match ? match[0] : null;
+    }
+
+    async function fetchPreview(url) {
+      card.innerHTML = '<span class="p-3 block text-stone-400 text-xs">Loading preview...</span>';
+      card.classList.remove('hidden');
+      try {
+        const r = await fetch('/api/posts/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await r.json();
+        if (data.error) {
+          card.innerHTML = `<span class="p-3 block text-red-400 text-xs">Preview error: ${data.error}${data.details ? ' — ' + data.details : ''}</span>`;
+        } else {
+          const domain = (() => { try { return new URL(data.url).hostname; } catch { return data.url; } })();
+          card.innerHTML = `
+            ${data.image ? `<img src="${data.image}" class="w-full max-h-40 block object-cover" onerror="this.remove()">` : ''}
+            <div class="p-3 flex flex-col gap-1 min-w-0">
+              <span class="text-stone-400 text-xs truncate">${domain}</span>
+              ${data.title ? `<span class="text-white font-semibold text-sm line-clamp-2">${data.title}</span>` : ''}
+              ${data.description ? `<span class="text-stone-300 text-xs line-clamp-2">${data.description}</span>` : ''}
+              <details class="mt-1">
+                <summary class="text-stone-500 text-xs cursor-pointer">Raw response (${data.responseSize} bytes, status ${data.statusCode})</summary>
+                <pre class="text-xs text-stone-400 overflow-auto max-h-40 mt-1 whitespace-pre-wrap">${data.rawBody ? data.rawBody.replace(/</g, '&lt;') : ''}</pre>
+              </details>
+            </div>`;
+        }
+      } catch(err) {
+        card.innerHTML = `<span class="p-3 block text-red-400 text-xs">${err.message}</span>`;
+      }
+    }
+
+    textarea.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function() {
+        const url = extractFirstUrl(textarea.value);
+        if (url && url !== lastFetchedUrl) {
+          lastFetchedUrl = url;
+          fetchPreview(url);
+        } else if (!url) {
+          lastFetchedUrl = null;
+          card.classList.add('hidden');
+          card.innerHTML = '';
+        }
+      }, 800);
+    });
+  })();
+</script>
+<% } %>

@@ -1,0 +1,15 @@
+<div id="report-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+    <div class="bg-stone-900 border border-stone-700 rounded-2xl w-full max-w-md mx-4 p-4 flex flex-col gap-3">
+        <div class="flex justify-between items-center">
+            <span id="report-modal-title" class="font-bold text-white text-lg">Report</span>
+            <button id="report-modal-close" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+        <p id="report-modal-subtitle" class="text-gray-400 text-sm truncate"></p>
+        <textarea id="report-reason"
+            placeholder="Describe why you're reporting this..."
+            class="bg-black text-white p-3 rounded-lg border border-stone-700 focus:outline-none focus:border-red-500 resize-none h-24"></textarea>
+        <div class="flex justify-end">
+            <button id="report-submit-btn" class="px-5 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold">Report</button>
+        </div>
+    </div>
+</div>

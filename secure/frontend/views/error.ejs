@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <title>Error <%= status %></title>
+</head>
+<body class="bg-black text-white min-h-screen flex items-center justify-center">
+  <div class="flex flex-col items-center gap-6 text-center px-4">
+    <p class="text-9xl font-bold text-stone-700"><%= status %></p>
+    <p class="text-2xl font-semibold"><%= message %></p>
+    <% if (status === 404) { %>
+      <p class="text-gray-500">The page or resource you're looking for doesn't exist.</p>
+    <% } else if (status === 403) { %>
+      <p class="text-gray-500">You don't have permission to access this page.</p>
+    <% } else { %>
+      <p class="text-gray-500">Something went wrong on our end. Please try again later.</p>
+    <% } %>
+    <div class="flex gap-3 mt-2">
+      <button onclick="history.back()"
+        class="px-5 py-2 rounded-full bg-stone-800 hover:bg-stone-700 text-white text-sm">
+        Go Back
+      </button>
+      <a href="/"
+        class="px-5 py-2 rounded-full bg-white hover:bg-gray-200 text-black text-sm font-bold">
+        Home
+      </a>
+    </div>
+  </div>
+</body>
+</html>

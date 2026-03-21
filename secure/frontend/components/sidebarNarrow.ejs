@@ -1,0 +1,56 @@
+<div class="flex flex-col items-center text-white border-stone-700 border-r h-full w-16 flex-shrink-0 gap-2">
+    <div class="m-2 p-3 rounded-full font-bold text-2xl cursor-pointer hover:bg-stone-900 flex items-center justify-center w-full">
+        S
+    </div>
+    <a href="/" class="flex items-center justify-center w-full p-3 rounded-full hover:bg-stone-900 cursor-pointer">
+        <img class="size-8" src="https://img.icons8.com/?size=100&id=2797&format=png&color=FFFFFF">
+    </a>
+    <a href="/explore" class="flex items-center justify-center w-full p-3 rounded-full hover:bg-stone-900 cursor-pointer">
+        <img class="size-8" src="https://img.icons8.com/?size=100&id=7695&format=png&color=FFFFFF">
+    </a>
+    <a href="/chat" class="flex items-center justify-center w-full p-3 rounded-full hover:bg-stone-900 cursor-pointer">
+        <img class="size-8" src="https://img.icons8.com/?size=100&id=53388&format=png&color=FFFFFF">
+    </a>
+    <a href="/profile" class="flex items-center justify-center w-full p-3 rounded-full hover:bg-stone-900 cursor-pointer">
+        <img class="size-8" src="https://img.icons8.com/?size=100&id=15265&format=png&color=FFFFFF">
+    </a>
+    <a href="/settings" class="flex items-center justify-center w-full p-3 rounded-full hover:bg-stone-900 cursor-pointer">
+        <img class="size-8" src="https://img.icons8.com/?size=100&id=364&format=png&color=FFFFFF">
+    </a>
+    <% if (user?.role === 'admin') { %>
+    <a href="/admin" class="flex items-center justify-center w-full p-3 rounded-full hover:bg-stone-900 cursor-pointer">
+        <img class="size-8" src="https://img.icons8.com/?size=100&id=887&format=png&color=FFFFFF">
+    </a>
+    <% } %>
+    <% if (user) { %>
+    <div class="mt-auto mb-4 relative w-full px-2">
+        <div id="user-menu-trigger"
+             class="flex items-center justify-center hover:bg-stone-900 cursor-pointer p-3 rounded-full select-none">
+            <img class="size-8 rounded-full flex-shrink-0" id="profile-img-sidebar" src="<%= user.profile_image || 'https://via.placeholder.com/40' %>">
+        </div>
+        <div id="user-menu"
+             class="hidden absolute bottom-full left-0 w-48 mb-1 bg-stone-900 border border-stone-700 rounded-xl shadow-lg overflow-hidden z-50">
+            <div class="px-4 py-3 border-b border-stone-700">
+                <p class="font-semibold text-sm truncate"><%- user.username %></p>
+                <p class="text-gray-500 text-xs truncate"><%- user.email %></p>
+            </div>
+            <a href="/logout"
+               class="flex items-center gap-3 px-4 py-3 hover:bg-stone-800 font-semibold text-sm">
+                <img class="size-4" src="https://img.icons8.com/?size=100&id=26194&format=png&color=FFFFFF">
+                Log out
+            </a>
+        </div>
+    </div>
+    <% } %>
+</div>
+<script>
+  const _trigger = document.getElementById('user-menu-trigger');
+  const _menu    = document.getElementById('user-menu');
+  if (_trigger && _menu) {
+    _trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _menu.classList.toggle('hidden');
+    });
+    document.addEventListener('click', () => _menu.classList.add('hidden'));
+  }
+</script>

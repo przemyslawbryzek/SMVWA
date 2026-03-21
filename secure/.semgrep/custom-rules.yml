@@ -1,0 +1,101 @@
+rules:
+  # CWE-89: SQL Injection — template literal with req.body interpolation
+  - id: sqli-req-body-template
+    pattern-regex: '`[^`]*\$\{\s*req\.body\.[^\}]+\}[^`]*`'
+    message: >
+      SQL Injection (CWE-89): req.body field interpolated directly into a template
+      literal likely used as SQL query. Use parameterized queries ($1/$2 placeholders).
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 - Injection"
+      category: security
+
+  - id: sqli-req-params-template
+    pattern-regex: '`[^`]*\$\{\s*req\.params\.[^\}]+\}[^`]*`'
+    message: >
+      SQL Injection (CWE-89): req.params field interpolated directly into a template
+      literal likely used as SQL query. Use parameterized queries.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 - Injection"
+      category: security
+
+  - id: sqli-req-query-template
+    pattern-regex: '`[^`]*\$\{\s*req\.query\.[^\}]+\}[^`]*`'
+    message: >
+      SQL Injection (CWE-89): req.query field interpolated directly into a template
+      literal likely used as SQL query. Use parameterized queries.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 - Injection"
+      category: security
+
+  - id: sqli-req-user-template
+    pattern-regex: '`[^`]*\$\{\s*req\.user\.[^\}]+\}[^`]*`'
+    message: >
+      SQL Injection (CWE-89): req.user field interpolated into a template literal.
+      req.user is deserialized from a cookie — treat as untrusted.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 - Injection"
+      category: security
+
+  # CWE-502: node-serialize RCE
+  - id: node-serialize-rce
+    pattern-regex: '(?:serialize\.unserialize|unserialize)\s*\('
+    message: >
+      RCE via Deserialization (CWE-502): node-serialize.unserialize() on untrusted
+      input allows Remote Code Execution via IIFE payloads in serialized functions.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-502
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      category: security
+
+  # CWE-94: SSTI — ejs.render with a variable (not a string literal)
+  - id: ejs-ssti
+    pattern-regex: 'ejs\.render\s*\(\s*(?!["\x27`])[a-zA-Z_$][a-zA-Z0-9_$]*'
+    message: >
+      SSTI (CWE-94): ejs.render() called with a variable template.
+      If the variable contains user input, attacker can execute arbitrary code.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-94
+      owasp: "A03:2021 - Injection"
+      category: security
+
+  # CWE-22: Path Traversal — path.join with req.query/req.body
+  - id: path-traversal-req-query
+    pattern-regex: 'path\.join\s*\([^)]*req\.query\.[^)]+\)'
+    message: >
+      Path Traversal (CWE-22): unsanitized req.query parameter in path.join().
+      Attacker can use ../ sequences to read arbitrary files.
+    languages: [javascript]
+    severity: ERROR
+    metadata:
+      cwe: CWE-22
+      owasp: "A01:2021 - Broken Access Control"
+      category: security
+
+  # CWE-200: Debug token in API response
+  - id: debug-token-in-response
+    pattern-regex: 'res\.json\s*\(\s*\{[^}]*debug_token\s*:'
+    message: >
+      Information Disclosure (CWE-200): debug_token exposed in JSON response.
+      Remove internal/debug fields from production API responses.
+    languages: [javascript]
+    severity: WARNING
+    metadata:
+      cwe: CWE-200
+      owasp: "A02:2021 - Cryptographic Failures"
+      category: security

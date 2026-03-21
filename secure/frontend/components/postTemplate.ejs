@@ -1,0 +1,141 @@
+<div class="relative flex flex-col hover:bg-stone-900 w-full p-4 border-b border-stone-700 cursor-pointer">
+    <%# Overlay link — covers whole card, navigates to post %>
+    <a href="/post/<%- post.id %>" class="absolute inset-0 z-0" aria-label="View post"></a>
+    <% if(post.is_repost) { %>
+        <div class="flex items-center gap-1 text-gray-500 mb-1 ml-10">
+            <img class="size-4" src="https://img.icons8.com/?size=100&id=GZmx08TD7nCw&format=png&color=808080">
+            <span>Reposted</span>
+        </div>
+    <% } %>
+    <div class="flex flex-row">
+        <a href="/profile/<%- post.author.id %>" class="relative z-10 size-10 shrink-0">
+            <img class="size-10 rounded-full"
+                src="<%- post.author.profile_image || 'https://via.placeholder.com/40' %>"
+                alt="Profile">
+        </a>
+        
+        <div class="flex flex-col ml-3 w-full">
+            <div class="flex flex-row items-center gap-2 w-full">
+                <a href="/profile/<%- post.author.id %>" class="relative z-10 font-bold hover:underline"><%- post.author.username %></a>
+                <p class="text-gray-500">@<%- post.author.email %></p>
+                <p class="text-gray-500">· <time datetime="<%= new Date(post.created_at).toISOString() %>" data-date="<%= post.created_at %>"><%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></time></p>
+                <button class="relative z-10 action-btn flex items-center gap-1 hover:text-blue-500 transition-colors ml-auto"
+                        data-action="more"
+                        data-post-id="<%- post.id %>"
+                        data-post-author-id="<%- post.author.id %>"
+                        data-post-author="<%- post.author.username %>"
+                        data-post-author-email="<%- post.author.email %>"
+                        data-post-author-avatar="<%- post.author.profile_image || '' %>"
+                        data-post-content="<%- post.content.replace(/"/g, '&quot;').replace(/\n/g, ' ') %>">
+                    <img class="size-5" src="https://img.icons8.com/?size=100&id=12620&format=png&color=808080">
+                </button>
+            </div>
+            <p class="mt-2 z-20"><%- parseContent(post.content) %></p>
+            <% const _previewUrl = (post.content && post.content.match(/https?:\/\/[^\s<>"']+/) || [])[0]; %>
+            <% if (_previewUrl) { %>
+            <div class="link-preview-card relative z-10 mt-2 border border-stone-700 rounded-lg overflow-hidden text-sm text-stone-400"
+                 data-preview-url="<%- _previewUrl %>">
+                <span class="block p-3 text-xs text-stone-500">Loading preview...</span>
+            </div>
+            <% } %>
+            <% if (post.attachments && post.attachments.length > 0 && showAttachments) { %>
+                <% if (post.attachments.length === 1) { %>
+                    <div class="mt-2">
+                        <a href="/post/<%- post.id %>/photo/0" class="relative z-10 block">
+                            <img class="w-full max-h-96 object-cover rounded-lg"
+                                src="<%- post.attachments[0] %>"
+                                alt="Attachment">
+                        </a>
+                    </div>
+                <% } else if (post.attachments.length === 2) { %>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <% post.attachments.forEach((attachment, index) => { %>
+                            <a href="/post/<%- post.id %>/photo/<%- index %>" class="relative z-10 block">
+                                <img class="w-full h-60 object-cover rounded-lg"
+                                    src="<%- attachment %>"
+                                    alt="Attachment">
+                            </a>
+                        <% }); %>
+                    </div>
+                <% } else if (post.attachments.length === 3) { %>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <a href="/post/<%- post.id %>/photo/0" class="relative z-10 col-span-2 block">
+                            <img class="w-full h-60 object-cover rounded-lg"
+                                src="<%- post.attachments[0] %>"
+                                alt="Attachment">
+                        </a>
+                        <a href="/post/<%- post.id %>/photo/1" class="relative z-10 block">
+                            <img class="w-full h-40 object-cover rounded-lg"
+                                src="<%- post.attachments[1] %>"
+                                alt="Attachment">
+                        </a>
+                        <a href="/post/<%- post.id %>/photo/2" class="relative z-10 block">
+                            <img class="w-full h-40 object-cover rounded-lg"
+                                src="<%- post.attachments[2] %>"
+                                alt="Attachment">
+                        </a>
+                    </div>
+                <% } else { %>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <% post.attachments.slice(0, 4).forEach((attachment, index) => { %>
+                            <a href="/post/<%- post.id %>/photo/<%- index %>" class="relative z-10 block">
+                                <div class="relative">
+                                    <img class="w-full h-40 object-cover rounded-lg"
+                                        src="<%- attachment %>"
+                                        alt="Attachment">
+                                    <% if (index === 3 && post.attachments.length > 4) { %>
+                                        <div class="absolute inset-0 bg-black bg-opacity-60 rounded-lg flex items-center justify-center pointer-events-none">
+                                            <span class="text-white text-2xl font-bold">+<%- post.attachments.length - 4 %></span>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            </a>
+                        <% }); %>
+                    </div>
+                <% } %>
+            <% } %>
+            <% if (post.citation) { %>
+                <a href="/post/<%- post.citation.id %>" class="flex flex-col border border-stone-700 rounded-lg p-3 mt-3 z-20 relative">
+                    <div class="flex flex-row items-center gap-2">
+                        <img class="size-5 rounded-full"
+                            src="<%- post.citation.author.profile_image || 'https://via.placeholder.com/40' %>"
+                            alt="Profile">
+                        <p class="font-bold text-sm"><%- post.citation.author.username %></p>
+                        <p class="text-gray-500 text-sm">@<%- post.citation.author.email %></p>
+                        <p class="text-gray-500">· <time datetime="<%= new Date(post.citation.created_at).toISOString() %>" data-date="<%= post.citation.created_at %>"><%= new Date(post.citation.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></time></p>
+                    </div>
+                    <p class="text-sm mt-1"><%- parseContent(post.citation.content) %></p>
+                    <% if (post.citation.attachments && post.citation.attachments.length > 0) { %>
+                        <div class="mt-2 grid gap-1 <%= post.citation.attachments.length === 1 ? '' : 'grid-cols-2' %>">
+                            <% post.citation.attachments.slice(0, 4).forEach(function(att) { %>
+                                <img class="w-full h-32 object-cover rounded-lg" src="<%- att %>" alt="Attachment">
+                            <% }); %>
+                        </div>
+                    <% } %>
+                </a>
+            <% } %>
+            <div class="relative z-10 flex flex-row gap-5 mt-2 text-gray-500 justify-between w-5/7">
+                <button class="action-btn flex items-center gap-1 hover:text-blue-500 transition-colors" 
+                        data-action="comment" 
+                        data-post-id="<%- post.id %>">
+                    <img class="size-5" src="https://img.icons8.com/?size=100&id=143&format=png&color=808080">
+                    <span class="count"><%- post.comments_count || 0 %></span>
+                </button>
+                <button class="action-btn flex items-center gap-1 hover:text-green-500 transition-colors <%= post.reposted_by_user ? 'text-green-500' : '' %>" 
+                        data-action="repost" 
+                        data-post-id="<%- post.id %>"
+                        data-reposted="<%- post.reposted_by_user ? 'true' : 'false' %>">
+                    <img class="size-5" src="https://img.icons8.com/?size=100&id=GZmx08TD7nCw&format=png&color=<%= post.reposted_by_user ? '00FF00' : '808080' %>">
+                    <span class="count"><%- post.reposts_count || 0 %></span>
+                </button>
+                <button class="action-btn flex items-center gap-1 hover:text-red-500 transition-colors <%= post.liked_by_user ? 'text-red-500' : '' %>" 
+                        data-action="like" 
+                        data-post-id="<%- post.id %>"
+                        data-liked="<%- post.liked_by_user ? 'true' : 'false' %>">
+                    <img class="size-5" src="https://img.icons8.com/?size=100&id=85038&format=png&color=<%= post.liked_by_user ? 'FF0000' : '808080' %>">
+                    <span class="count"><%- post.likes_count || 0 %></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

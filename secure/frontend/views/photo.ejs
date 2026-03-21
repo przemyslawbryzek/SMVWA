@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <title>Photo</title>
+</head>
+<body class="bg-black text-white">
+    <div class="flex flex-row">
+        <div class="relative w-3/4 h-screen border-r border-stone-700 flex items-center justify-center">
+            <a href="/post/<%= post.id %>" class="absolute top-4 left-4 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-black bg-opacity-70 hover:bg-opacity-100 text-white text-xl leading-none">×</a>
+            <% if (photoId > 0) { %>
+                <a href="/post/<%= post.id %>/photo/<%= photoId - 1 %>" class="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-black bg-opacity-70 hover:bg-opacity-100 text-white text-xl leading-none opacity-70 hover:opacity-100">←</a>
+            <% } %>
+            <% if (photoId < post.attachments.length - 1) { %>
+                <a href="/post/<%= post.id %>/photo/<%= photoId + 1 %>" class="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-black bg-opacity-70 hover:bg-opacity-100 text-white text-xl leading-none opacity-70 hover:opacity-100">→</a>
+            <% } %>
+            <img class="w-full h-full object-contain" src="<%- post.attachments[photoId] %>" alt="Photo">
+        </div>
+        <div class="w-1/4 h-screen overflow-y-auto">
+            <div id="thread-container">
+                <% thread.forEach(post => { %>
+                    <%- include('../components/postTemplate', { post, showAttachments: true }) %>
+                <% }); %>
+            </div>
+            <div id="post-container">
+                <%- include('../components/postTemplate', { post, showAttachments: false }) %>
+            </div>
+            <%- include('../components/postForm', { user, post }) %>
+            <%- include('../components/postsList', { posts: comments, containerId: 'comments-container' }) %>
+        </div>
+    </div>
+    <script src="/js/actions.js"></script>
+    <script>
+      window.CURRENT_USER = <% if (user) { %>{ id: <%- user.id %>, role: 'user' }<% } else { %>null<% } %>;
+      function formatDates(root) {
+        (root || document).querySelectorAll('time[data-date]').forEach(el => {
+          try {
+            el.textContent = new Date(el.dataset.date).toLocaleDateString(undefined, {
+              month: 'short', day: 'numeric', year: 'numeric'
+            });
+          } catch {}
+        });
+      }
+      document.addEventListener('DOMContentLoaded', () => formatDates());
+      window.formatDates = formatDates;
+    </script>
+</body>
+</html>

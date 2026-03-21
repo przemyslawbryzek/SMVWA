@@ -1,0 +1,22 @@
+<div id="quote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+    <div class="bg-stone-900 border border-stone-700 rounded-2xl w-full max-w-lg mx-4 p-4 flex flex-col gap-3">
+        <div class="flex justify-between items-center">
+            <span class="font-bold text-white text-lg">Quote post</span>
+            <button id="quote-modal-close" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+        <textarea id="quote-content"
+            placeholder="Add your comment..."
+            class="bg-black text-white p-3 rounded-lg border border-stone-700 focus:outline-none focus:border-blue-500 resize-none h-24"></textarea>
+        <a id="quote-cited-post" href="#" class="flex flex-col border border-stone-700 rounded-xl p-3 bg-stone-800 hover:bg-stone-700 transition-colors">
+            <div class="flex items-center gap-2 mb-1">
+                <img id="quote-cited-avatar" src="https://via.placeholder.com/20" class="size-5 rounded-full" alt="">
+                <span id="quote-cited-author" class="font-bold text-white text-sm"></span>
+                <span id="quote-cited-email" class="text-gray-500 text-sm"></span>
+            </div>
+            <p id="quote-cited-content" class="text-gray-300 text-sm line-clamp-3"></p>
+        </a>
+        <div class="flex justify-end">
+            <button id="quote-submit-btn" class="px-5 py-2 rounded-full bg-white text-black font-bold hover:bg-gray-200">Post</button>
+        </div>
+    </div>
+</div>

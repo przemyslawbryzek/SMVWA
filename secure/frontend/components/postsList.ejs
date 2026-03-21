@@ -1,0 +1,5 @@
+<div id="<%= containerId || 'posts-container' %>" class="flex flex-col">
+    <% posts.forEach(post => { %>
+        <%- include('postTemplate', { post, showAttachments: true }) %>
+    <% }) %>
+</div>

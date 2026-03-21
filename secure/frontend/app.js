@@ -1,0 +1,54 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const { decodeAuthCookie } = require('./middleware/auth');
+const { parseContent } = require('./utils/contentParser');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+const indexRouter = require('./routes/index');
+const authRouter = require('./routes/auth');
+const apiProxy = require('./routes/api');
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+app.use(
+  cors({
+    origin: ['http://localhost:3000', 'http://frontend:3000', 'http://127.0.0.1:5500', 'http://localhost:5500'],
+    credentials: true,
+  })
+);
+
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+app.locals.parseContent = parseContent;
+
+app.use((req, res, next) => {
+  res.locals.authPayload = decodeAuthCookie(req);
+  next();
+});
+
+app.use('/', indexRouter);
+app.use('/', authRouter);
+app.use('/', apiProxy);
+
+app.use((req, res) => {
+  res.status(404).render('error', { status: 404, message: 'Page not found' });
+});
+
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  const status = err.status || 500;
+  res.status(status).render('error', { status, message: err.message || 'Internal server error' });
+});
+
+app.listen(PORT, () => {
+  console.log(`Frontend działa na http://localhost:${PORT}`);
+});

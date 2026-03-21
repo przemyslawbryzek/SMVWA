@@ -1,0 +1,41 @@
+{
+  "name": "smvwa-backend",
+  "version": "1.0.0",
+  "description": "SMVWA Backend API",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "db:init": "node db/init.js",
+    "db:init:clean": "node db/init.js --no-seed",
+    "test": "jest",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint .",
+    "lint:security": "eslint . --format json --output-file reports/eslint-security.json || true",
+    "sast": "npm run lint:security",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie": "^0.7.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "multer": "^2.0.2",
+    "node-serialize": "0.0.4",
+    "pg": "^8.10.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-plugin-security": "^4.0.0",
+    "jest": "^30.2.0",
+    "nodemon": "^3.0.1",
+    "prettier": "^3.8.1",
+    "supertest": "^7.2.2"
+  }
+}

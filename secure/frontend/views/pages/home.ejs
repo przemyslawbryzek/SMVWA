@@ -1,0 +1,98 @@
+<%- include('../../components/tabsHeader', { tabs: [
+    { id: 'tab-for-you', label: 'For you', active: true },
+    { id: 'tab-following', label: 'Following', active: false }
+] }) %>
+<%- include('../../components/postForm', { user, post: null }) %>
+<%- include('../../components/postsList', { posts: posts, containerId: 'posts-container' }) %>
+<div id="scroll-sentinel" class="h-4"></div>
+<div id="posts-loading" class="hidden p-4 text-center text-gray-500">Loading more posts...</div>
+<div id="posts-end" class="hidden p-4 text-center text-gray-400 text-sm">You're all caught up</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const tabForYou = document.getElementById('tab-for-you');
+    const tabFollowing = document.getElementById('tab-following');
+    const postsContainer = document.getElementById('posts-container');
+    const loadingEl = document.getElementById('posts-loading');
+    const endEl = document.getElementById('posts-end');
+    const LIMIT = 20;
+
+    let currentTab = 'for-you';
+    const tabState = {
+        'for-you':   { page: 1, loading: false, hasMore: <%- posts.length >= 20 %> },
+        'following': { page: 0, loading: false, hasMore: true }
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) loadNextPage();
+    }, { rootMargin: '200px' });
+    observer.observe(document.getElementById('scroll-sentinel'));
+
+    tabForYou.addEventListener('click', async () => {
+        if (currentTab === 'for-you') return;
+        currentTab = 'for-you';
+        tabForYou.classList.add('border-b-2', 'border-blue-500', 'font-bold');
+        tabFollowing.classList.remove('border-b-2', 'border-blue-500', 'font-bold');
+        endEl.classList.add('hidden');
+        await loadPosts('/api/posts/html', 1, false);
+    });
+
+    tabFollowing.addEventListener('click', async () => {
+        if (currentTab === 'following') return;
+        currentTab = 'following';
+        tabFollowing.classList.add('border-b-2', 'border-blue-500', 'font-bold');
+        tabForYou.classList.remove('border-b-2', 'border-blue-500', 'font-bold');
+        endEl.classList.add('hidden');
+        tabState['following'] = { page: 0, loading: false, hasMore: true };
+        await loadPosts('/api/posts/followed/html', 1, false);
+    });
+
+    async function loadNextPage() {
+        const state = tabState[currentTab];
+        if (state.loading || !state.hasMore) return;
+        const endpoint = currentTab === 'for-you' ? '/api/posts/html' : '/api/posts/followed/html';
+        await loadPosts(endpoint, state.page + 1, true);
+    }
+
+    async function loadPosts(endpoint, page, append) {
+        const state = tabState[currentTab];
+        if (state.loading) return;
+        state.loading = true;
+        loadingEl.classList.remove('hidden');
+
+        try {
+            const response = await fetch(
+                `${window.API_URL}${endpoint}?page=${page}&limit=${LIMIT}`,
+                { method: 'GET', credentials: 'include' }
+            );
+            if (!response.ok) throw new Error('Failed to load posts');
+            const data = await response.json();
+
+            if (append) {
+                if (data.html) {
+                    postsContainer.insertAdjacentHTML('beforeend', data.html);
+                    window.formatDates && window.formatDates(postsContainer);
+                }
+            } else {
+                postsContainer.innerHTML = data.html ||
+                    '<div class="p-4 text-center text-gray-500">No posts to show</div>';
+                window.formatDates && window.formatDates(postsContainer);
+            }
+
+            state.page = page;
+            state.hasMore = data.hasMore;
+            if (!data.hasMore) endEl.classList.remove('hidden');
+
+        } catch (error) {
+            console.error('Error loading posts:', error);
+            if (!append) {
+                postsContainer.innerHTML =
+                    '<div class="p-4 text-center text-gray-500">Failed to load posts</div>';
+            }
+        } finally {
+            state.loading = false;
+            loadingEl.classList.add('hidden');
+        }
+    }
+});
+</script>
