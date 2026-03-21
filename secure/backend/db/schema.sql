@@ -169,5 +169,3 @@ CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires_at ON revoked_tokens (expi
 CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets (token_hash);
 CREATE INDEX IF NOT EXISTS idx_password_resets_expires_at ON password_resets (expires_at);
 
--- Add attachment column to existing installations
-ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment TEXT DEFAULT NULL;

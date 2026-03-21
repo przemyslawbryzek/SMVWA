@@ -5,7 +5,7 @@
  *
  * Covers:
  *  - POST /api/chat/upload  (file upload, no auth required)
- *  - GET  /api/chat/files   (file download, PATH TRAVERSAL vulnerable)
+ *  - GET  /api/chat/files   (file download, PATH TRAVERSAL blocked)
  *  - GET  /api/chat/conversations (auth required)
  *  - POST /api/chat/conversations/:partnerId/messages (auth required)
  *
@@ -123,6 +123,18 @@ describe('POST /api/chat/upload', () => {
     expect(res.body.filename).toMatch(/original\.txt$/);
   });
 
+  it('sanitizes dangerous filename characters in upload', async () => {
+    const res = await request(app)
+      .post('/api/chat/upload')
+      .attach('file', Buffer.from('x'), { filename: '../../evil file?.txt', contentType: 'text/plain' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.filename).toMatch(/evil_file_\.txt$/);
+    expect(res.body.filename).not.toContain('..');
+    expect(res.body.filename).not.toContain('/');
+    expect(res.body.filename).not.toContain('\\');
+  });
+
   // cleanup uploaded files after this suite
   afterAll(() => {
     const dir = path.join(__dirname, '../../chat_files');
@@ -136,9 +148,9 @@ describe('POST /api/chat/upload', () => {
   });
 });
 
-// ─── GET /api/chat/files — PATH TRAVERSAL ────────────────────────────────────
+// ─── GET /api/chat/files — PATH TRAVERSAL PROTECTION ─────────────────────────
 
-describe('GET /api/chat/files (path traversal)', () => {
+describe('GET /api/chat/files (path traversal protection)', () => {
   const chatFilesPath = path.join(__dirname, '../../chat_files');
   const testFile = path.join(chatFilesPath, 'test-traversal-fixture.txt');
 
@@ -163,25 +175,16 @@ describe('GET /api/chat/files (path traversal)', () => {
     expect(res.text).toBe('fixture content');
   });
 
-  it('PATH TRAVERSAL — resolves ../ sequences without blocking', async () => {
-    // The endpoint uses path.join(chatFilesPath, filename) without sanitisation.
-    // path.join('/app/chat_files', '../../etc/passwd') → /etc/passwd
-    // In the test environment we verify the server ATTEMPTS the traversed path
-    // (it returns 404 because /etc/passwd doesn't exist in test env, not because
-    //  it was blocked — a 403/400 would indicate proper sanitisation).
+  it('blocks ../ traversal sequences', async () => {
     const res = await request(app).get('/api/chat/files?name=../../etc/passwd');
-
-    // Correct fix would return 400 (bad request / path rejected).
-    // Vulnerable code returns 404 (file not found — tried to open it).
-    expect(res.status).not.toBe(400); // NOT blocked by validation
-    expect(res.status).not.toBe(403); // NOT blocked by access control
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/invalid filename/i);
   });
 
-  it('PATH TRAVERSAL — encoded traversal sequences are not decoded/blocked', async () => {
-    // %2e%2e%2f = ../  — some servers decode before path.join
+  it('blocks encoded traversal sequences', async () => {
     const res = await request(app).get('/api/chat/files?name=..%2F..%2Fetc%2Fpasswd');
-    // Any non-400/403 means the server did not reject the traversal pattern
-    expect([200, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/invalid filename/i);
   });
 });
 

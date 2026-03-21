@@ -11,15 +11,26 @@ const { handleError } = require('../utils/routeHelpers');
 const router = express.Router();
 
 const chatFilesPath = path.join(__dirname, '../chat_files');
+const chatFilesRoot = path.resolve(chatFilesPath);
 if (!fs.existsSync(chatFilesPath)) {
   fs.mkdirSync(chatFilesPath, { recursive: true });
+}
+
+function sanitizeFilename(filename) {
+  const base = path.basename(String(filename || 'file'));
+  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, '_');
+  return cleaned.length > 0 ? cleaned : 'file';
+}
+
+function isSafeStoredFilename(filename) {
+  return typeof filename === 'string' && /^[a-zA-Z0-9._-]{1,255}$/.test(filename);
 }
 
 const chatStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, chatFilesPath),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+    cb(null, `${uniqueSuffix}-${sanitizeFilename(file.originalname)}`);
   },
 });
 const chatUpload = multer({ storage: chatStorage });
@@ -43,7 +54,16 @@ router.get('/files', (req, res) => {
   if (!filename) {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'filename is required' });
   }
-  const filePath = path.join(chatFilesPath, filename);
+
+  if (!isSafeStoredFilename(filename)) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Invalid filename' });
+  }
+
+  const filePath = path.resolve(chatFilesRoot, filename);
+  if (!filePath.startsWith(`${chatFilesRoot}${path.sep}`)) {
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Invalid filename path' });
+  }
+
   res.sendFile(filePath, err => {
     if (err) {res.status(404).json({ error: 'File not found' });}
   });
