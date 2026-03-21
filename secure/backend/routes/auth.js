@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const pool = require('../db/pool');
 const { AUTH, HTTP_STATUS } = require('../config/constants');
 const { authMiddleware } = require('../middleware/auth');
@@ -9,6 +10,14 @@ const { buildPublicTag } = require('../utils/publicTag');
 const { handleError } = require('../utils/routeHelpers');
 
 const router = express.Router();
+
+function generatePasswordResetToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function hashPasswordResetToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 router.post('/register', async (req, res) => {
   const { username, email, password, confirm_password } = req.body;
@@ -92,11 +101,19 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     const userId = result.rows[0].id;
-    const token = String(Math.floor(100000 + Math.random() * 900000));
-    await pool.query('INSERT INTO password_resets (user_id, token) VALUES ($1, $2)', [userId, token]);
+    const token = generatePasswordResetToken();
+    const tokenHash = hashPasswordResetToken(token);
+    const expiresAt = new Date(Date.now() + AUTH.PASSWORD_RESET_TOKEN_TTL_MINUTES * 60 * 1000);
+
+    await pool.query('DELETE FROM password_resets WHERE user_id = $1 OR expires_at <= NOW()', [userId]);
+    await pool.query(
+      'INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
+      [userId, tokenHash, expiresAt]
+    );
     return res.json({
       message: 'Password reset token generated.',
       debug_token: token,
+      expires_in_minutes: AUTH.PASSWORD_RESET_TOKEN_TTL_MINUTES,
     });
   } catch (error) {
     return handleError(res, error, 'Forgot password error');
@@ -112,16 +129,26 @@ router.post('/reset-password', async (req, res) => {
   }
 
   try {
-    const result = await pool.query('SELECT user_id FROM password_resets WHERE token = $1', [token]);
+    const tokenHash = hashPasswordResetToken(token);
+    const result = await pool.query(
+      `SELECT id, user_id
+       FROM password_resets
+       WHERE token_hash = $1 AND expires_at > NOW()
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [tokenHash]
+    );
 
     if (result.rows.length === 0) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Invalid reset token' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Invalid or expired reset token' });
     }
 
     const userId = result.rows[0].user_id;
+    const resetId = result.rows[0].id;
     const passwordHash = await bcrypt.hash(new_password, 10);
 
     await pool.query('UPDATE users SET password = $1 WHERE id = $2', [passwordHash, userId]);
+    await pool.query('DELETE FROM password_resets WHERE id = $1 OR user_id = $2', [resetId, userId]);
 
     return res.json({ success: true, message: 'Password has been reset successfully.' });
   } catch (error) {

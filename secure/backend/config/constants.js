@@ -1,6 +1,7 @@
 module.exports = {
   AUTH: {
     JWT_SECRET: process.env.JWT_SECRET || 'smvwa-dev-jwt-secret-change-me',
+    PASSWORD_RESET_TOKEN_TTL_MINUTES: 10,
   },
   PAGINATION: {
     DEFAULT_LIMIT: 20,

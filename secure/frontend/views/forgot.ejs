@@ -20,7 +20,7 @@
       <% if (debugToken) { %>
         <div class="p-4 bg-stone-900 border border-yellow-600 rounded w-1/2">
           <p class="text-yellow-400 text-sm font-semibold mb-1">⚠ Debug: Reset token (would be emailed in production)</p>
-          <p class="font-mono text-2xl tracking-widest text-white"><%= debugToken %></p>
+          <p class="font-mono text-xs break-all text-white"><%= debugToken %></p>
           <a href="/reset-password?token=<%= debugToken %>" class="mt-3 inline-block text-blue-400 hover:underline text-sm">→ Go to reset page</a>
         </div>
       <% } %>

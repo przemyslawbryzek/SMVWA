@@ -243,9 +243,10 @@ describe('POST /api/forgot-password', () => {
     expect(res.body.error).toMatch(/no account/i);
   });
 
-  it('returns 200 with a 6-digit debug_token on success', async () => {
+  it('returns 200 with a secure debug_token on success', async () => {
     pool.query
       .mockResolvedValueOnce({ rows: [{ id: 5 }] }) // SELECT id FROM users
+      .mockResolvedValueOnce({ rows: [] }) // DELETE old / expired password_resets
       .mockResolvedValueOnce({ rows: [] }); // INSERT password_resets
 
     const res = await request(app)
@@ -253,7 +254,8 @@ describe('POST /api/forgot-password', () => {
       .send({ email: 'real@x.com' });
 
     expect(res.status).toBe(200);
-    expect(res.body.debug_token).toMatch(/^\d{6}$/);
+    expect(res.body.debug_token).toMatch(/^[a-f0-9]{64}$/);
+    expect(res.body.expires_in_minutes).toBe(10);
   });
 
   it('debug_token is different on consecutive calls (random)', async () => {
@@ -295,19 +297,31 @@ describe('POST /api/reset-password', () => {
       .send({ token: '000000', new_password: 'NewPass1!' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/invalid.*token/i);
+    expect(res.body.error).toMatch(/invalid|expired.*token/i);
   });
 
   it('returns 200 and success:true on valid token', async () => {
     pool.query
-      .mockResolvedValueOnce({ rows: [{ user_id: 3 }] }) // SELECT user_id
-      .mockResolvedValueOnce({ rows: [] }); // UPDATE users SET password
+      .mockResolvedValueOnce({ rows: [{ id: 11, user_id: 3 }] }) // SELECT id, user_id
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE users SET password
+      .mockResolvedValueOnce({ rows: [] }); // DELETE used reset token(s)
 
     const res = await request(app)
       .post('/api/reset-password')
-      .send({ token: '654321', new_password: 'NewSecure1!' });
+      .send({ token: 'a'.repeat(64), new_password: 'NewSecure1!' });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+  });
+
+  it('returns 400 when token exists but is expired', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [] });
+
+    const res = await request(app)
+      .post('/api/reset-password')
+      .send({ token: 'b'.repeat(64), new_password: 'NewPass1!' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/expired|invalid/i);
   });
 });

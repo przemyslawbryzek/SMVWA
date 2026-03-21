@@ -23,8 +23,8 @@
         <input type="hidden" name="token" value="<%= token %>">
         <div>
           <label class="text-sm text-gray-400 mb-1 block">Reset Token</label>
-          <input type="text" name="token_display" value="<%= token %>" maxlength="6"
-            class="p-2 rounded bg-black border border-white focus:outline-none focus:border-blue-500 w-full font-mono tracking-widest"
+          <input type="text" name="token_display" value="<%= token %>"
+            class="p-2 rounded bg-black border border-white focus:outline-none focus:border-blue-500 w-full font-mono text-xs"
             oninput="document.querySelector('[name=token]').value = this.value">
         </div>
         <input type="password" name="new_password" placeholder="New Password"

@@ -64,6 +64,20 @@ async function ensureRuntimeSchema() {
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_users_public_tag ON users (public_tag)');
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id SERIAL PRIMARY KEY,
+      user_id INT REFERENCES users(id) ON DELETE CASCADE,
+      token_hash VARCHAR(64) NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await pool.query('ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS token_hash VARCHAR(64)');
+  await pool.query('ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets (token_hash)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_password_resets_expires_at ON password_resets (expires_at)');
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS revoked_tokens (
       token_hash VARCHAR(64) PRIMARY KEY,
       expires_at TIMESTAMP NOT NULL,
