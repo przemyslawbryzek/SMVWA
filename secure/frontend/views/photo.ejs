@@ -16,7 +16,7 @@
             <% if (photoId < post.attachments.length - 1) { %>
                 <a href="/post/<%= post.id %>/photo/<%= photoId + 1 %>" class="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-black bg-opacity-70 hover:bg-opacity-100 text-white text-xl leading-none opacity-70 hover:opacity-100">→</a>
             <% } %>
-            <img class="w-full h-full object-contain" src="<%- post.attachments[photoId] %>" alt="Photo">
+            <img class="w-full h-full object-contain" src="<%= post.attachments[photoId] %>" alt="Photo">
         </div>
         <div class="w-1/4 h-screen overflow-y-auto">
             <div id="thread-container">
@@ -33,7 +33,7 @@
     </div>
     <script src="/js/actions.js"></script>
     <script>
-      window.CURRENT_USER = <% if (user) { %>{ id: <%- user.id %>, role: 'user' }<% } else { %>null<% } %>;
+      window.CURRENT_USER = <% if (user) { %>{ id: <%= user.id %>, role: 'user' }<% } else { %>null<% } %>;
       function formatDates(root) {
         (root || document).querySelectorAll('time[data-date]').forEach(el => {
           try {

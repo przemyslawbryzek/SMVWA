@@ -25,7 +25,7 @@
                                 <div class="flex flex-col overflow-hidden">
                                     <p class="font-semibold truncate"><%= conversation.username %></p>
                                     <p class="text-gray-500 text-sm truncate">
-                                        <%- conversation.sender_id === user.id ? 'You: ' : conversation.username + ': ' %><%- conversation.last_message || 'No messages yet' %>
+                                        <%= conversation.sender_id === user.id ? 'You: ' : conversation.username + ': ' %><%= conversation.last_message || 'No messages yet' %>
                                     </p>
                                 </div>
                             </a>
@@ -54,15 +54,15 @@
                 <% } else { %>
                     <div class="flex flex-row items-center gap-3 px-4 py-3 flex-shrink-0">
                         <a href="/profile/<%= partner.id %>">
-                            <img class="size-10 rounded-full" src="<%- partner.profile_image || 'https://via.placeholder.com/40' %>">
+                            <img class="size-10 rounded-full" src="<%= partner.profile_image || 'https://via.placeholder.com/40' %>">
                         </a>
-                        <p class="font-bold text-lg"><%- partner.username %></p>
+                        <p class="font-bold text-lg"><%= partner.username %></p>
                     </div>
                     <div id="messages-container" class="flex flex-col gap-2 flex-1 overflow-y-auto px-4 py-4">
                         <div class="flex flex-col items-center justify-center">
-                            <img class="size-25 rounded-full" src="<%- partner.profile_image || 'https://via.placeholder.com/40' %>">
-                            <p class="text-xl font-bold mt-2"><%- partner.username %></p>
-                            <p class="text-gray-500 text-sm"><%- partner.email %></p>
+                            <img class="size-25 rounded-full" src="<%= partner.profile_image || 'https://via.placeholder.com/40' %>">
+                            <p class="text-xl font-bold mt-2"><%= partner.username %></p>
+                            <p class="text-gray-500 text-sm"><%= partner.email %></p>
                             <a href="/profile/<%= partner.id %>" class="bg-white hover:bg-gray-200 text-black text-sm font-bold px-4 py-1 rounded-full mt-2">View Profile</a>
                         </div>
                         <% if (messages && messages.length > 0) { %>
@@ -89,20 +89,20 @@
                                 <div class="flex flex-row <%= message.sender_id === user.id ? 'justify-end' : 'justify-start' %>">
                                     <div class="flex flex-col <%= message.sender_id === user.id ? 'items-end' : 'items-start' %> gap-0.5">
                                         <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-2xl text-sm <%= message.sender_id === user.id ? 'bg-blue-600 text-white rounded-br-none' : 'bg-stone-800 text-white rounded-bl-none' %>">
-                                            <%- message.content %>
+                                            <%= message.content %>
                                             <% if (message.attachment) { %>
                                                 <% const _isImg = /\.(png|jpe?g|gif|webp|svg)$/i.test(message.attachment); %>
                                                 <% const _backendUrl = 'http://localhost:3001'; %>
                                                 <% const _fileUrl = _backendUrl + '/api/chat/files?name=' + encodeURIComponent(message.attachment.split('?name=').pop()); %>
                                                 <% if (_isImg) { %>
                                                     <div class="mt-1">
-                                                        <a href="<%- _fileUrl %>" target="_blank">
-                                                            <img src="<%- _fileUrl %>" class="max-w-xs rounded-lg max-h-48 object-contain" alt="attachment">
+                                                        <a href="<%= _fileUrl %>" target="_blank">
+                                                            <img src="<%= _fileUrl %>" class="max-w-xs rounded-lg max-h-48 object-contain" alt="attachment">
                                                         </a>
                                                     </div>
                                                 <% } else { %>
                                                     <div class="mt-1">
-                                                        <a href="<%- _fileUrl %>" target="_blank" class="flex items-center gap-1 text-xs underline opacity-80">
+                                                        <a href="<%= _fileUrl %>" target="_blank" class="flex items-center gap-1 text-xs underline opacity-80">
                                                             <img class="size-4" src="https://img.icons8.com/?size=100&id=86460&format=png&color=FFFFFF">
                                                             <span><%= message.attachment.split('-').slice(2).join('-') || message.attachment %></span>
                                                         </a>
@@ -124,7 +124,7 @@
                             <span class="size-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay:150ms"></span>
                             <span class="size-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay:300ms"></span>
                         </span>
-                        <span class="text-gray-400 text-xs"><%- partner.username %> is typing…</span>
+                        <span class="text-gray-400 text-xs"><%= partner.username %> is typing…</span>
                     </div>
                     <div class="flex flex-row items-center gap-2 px-4 py-3 flex-shrink-0">
                         <label for="chat-file-input" class="p-2 rounded-full hover:bg-stone-800 cursor-pointer flex-shrink-0" title="Attach file">
@@ -245,11 +245,21 @@
         return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
       }
 
+      function escapeHtml(text) {
+        return String(text || '')
+          .replace(/<-/g, '<=')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
       function createDateSeparator(label) {
         const el = document.createElement('div');
         el.className = 'flex items-center gap-3 my-2';
         el.dataset.dateLabel = label;
-        el.innerHTML = `<div class="flex-1 h-px bg-stone-700"></div><span class="text-xs text-gray-500 flex-shrink-0">${label}</span><div class="flex-1 h-px bg-stone-700"></div>`;
+        el.innerHTML = `<div class="flex-1 h-px bg-stone-700"></div><span class="text-xs text-gray-500 flex-shrink-0">${escapeHtml(label)}</span><div class="flex-1 h-px bg-stone-700"></div>`;
         return el;
       }
 
@@ -281,6 +291,7 @@
 
       function createBubble(content, isMine, pending = false, timestamp = null, attachment = null) {
         const time = formatTime(timestamp || new Date());
+        const safeContent = escapeHtml(content);
         const wrapper = document.createElement('div');
         wrapper.className = `flex flex-row ${isMine ? 'justify-end' : 'justify-start'}`;
         if (pending) wrapper.dataset.pending = '1';
@@ -288,7 +299,7 @@
           <div class="flex flex-col ${isMine ? 'items-end' : 'items-start'} gap-0.5">
             <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-2xl text-sm ${
               isMine ? 'bg-blue-600 text-white rounded-br-none' : 'bg-stone-800 text-white rounded-bl-none'
-            } ${pending ? 'opacity-60' : ''}">${content}${attachment ? renderAttachment(attachment) : ''}</div>
+            } ${pending ? 'opacity-60' : ''}">${safeContent}${attachment ? renderAttachment(attachment) : ''}</div>
             <span class="text-xs text-gray-500 px-1 ${pending ? 'opacity-60' : ''}">${time}</span>
           </div>`;
         return wrapper;
@@ -302,6 +313,8 @@
         const isActive = String(userId) === String(PARTNER_ID);
         const avatar   = profileImage || 'https://via.placeholder.com/40';
         const preview  = `${isMine ? 'You' : username}: ${lastMessage}`;
+        const safeUsername = escapeHtml(username);
+        const safePreview = escapeHtml(preview);
 
         let row = list.querySelector(`a[data-conv-id="${userId}"]`);
         if (row) {
@@ -316,8 +329,8 @@
           row.innerHTML = `
             <img class="size-10 rounded-full flex-shrink-0" src="${avatar}">
             <div class="flex flex-col overflow-hidden">
-              <p class="font-semibold truncate">${username}</p>
-              <p class="text-gray-500 text-sm truncate">${preview}</p>
+              <p class="font-semibold truncate">${safeUsername}</p>
+              <p class="text-gray-500 text-sm truncate">${safePreview}</p>
             </div>
           `;
           list.prepend(row);

@@ -1,6 +1,14 @@
 // ── More menu ────────────────────────────────────────────────────────────────
 
 function showMoreMenu(postId, button) {
+  const safeDecode = value => {
+    try {
+      return decodeURIComponent(value || '');
+    } catch {
+      return value || '';
+    }
+  };
+
   const existing = document.querySelector('.more-menu');
   if (existing) {
     existing.remove();
@@ -10,10 +18,10 @@ function showMoreMenu(postId, button) {
   const currentUser = window.CURRENT_USER;
   const authorId = Number(button.dataset.postAuthorId);
   const canModify = currentUser && (currentUser.id === authorId || currentUser.role === 'admin');
-  const postAuthor = button.dataset.postAuthor || '';
-  const postEmail = button.dataset.postAuthorEmail || '';
-  const postAvatar = button.dataset.postAuthorAvatar || '';
-  const postContent = button.dataset.postContent || '';
+  const postAuthor = safeDecode(button.dataset.postAuthor);
+  const postEmail = safeDecode(button.dataset.postAuthorEmail);
+  const postAvatar = safeDecode(button.dataset.postAuthorAvatar);
+  const postContent = safeDecode(button.dataset.postContent);
 
   const menu = document.createElement('div');
   menu.className =

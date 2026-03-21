@@ -7,6 +7,20 @@ class ValidationError extends Error {
   }
 }
 
+function isProvided(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function assertNumericIfProvided(value, fieldName) {
+  if (!isProvided(value)) {
+    return;
+  }
+
+  if (isNaN(Number(value))) {
+    throw new ValidationError(`Invalid ${fieldName}`);
+  }
+}
+
 function validatePostInput(data) {
   if (!data.content || typeof data.content !== 'string') {
     throw new ValidationError('Content is required and must be a string');
@@ -25,17 +39,9 @@ function validatePostInput(data) {
     throw new ValidationError('Attachments must be an array');
   }
 
-  if (data.root_id !== null && isNaN(Number(data.root_id))) {
-    throw new ValidationError('Invalid root_id');
-  }
-
-  if (data.parent_id !== null && isNaN(Number(data.parent_id))) {
-    throw new ValidationError('Invalid parent_id');
-  }
-
-  if (data.citation_id !== null && isNaN(Number(data.citation_id))) {
-    throw new ValidationError('Invalid citation_id');
-  }
+  assertNumericIfProvided(data.root_id, 'root_id');
+  assertNumericIfProvided(data.parent_id, 'parent_id');
+  assertNumericIfProvided(data.citation_id, 'citation_id');
 }
 
 function validatePaginationParams(query) {

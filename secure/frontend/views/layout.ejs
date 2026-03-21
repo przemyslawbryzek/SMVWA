@@ -58,8 +58,16 @@
     <script src="/js/dates.js"></script>
     <script src="/js/userMenu.js"></script>
     <script src="/js/linkPreview.js"></script>
+        <meta id="current-user-data" data-user="<%= user ? JSON.stringify({ id: user.id, role: user.role }) : 'null' %>">
     <script>
-      window.CURRENT_USER = <% if (user) { %>{ id: <%- user.id %>, role: '<%- user.role %>' }<% } else { %>null<% } %>;
+            (function () {
+                const currentUserMeta = document.getElementById('current-user-data');
+                try {
+                    window.CURRENT_USER = currentUserMeta ? JSON.parse(currentUserMeta.dataset.user) : null;
+                } catch {
+                    window.CURRENT_USER = null;
+                }
+            }());
     </script>
 </body>
 </html>

@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentTab = 'for-you';
     const tabState = {
-        'for-you':   { page: 1, loading: false, hasMore: <%- posts.length >= 20 %> },
+        'for-you':   { page: 1, loading: false, hasMore: <%= posts.length >= 20 %> },
         'following': { page: 0, loading: false, hasMore: true }
     };
 
