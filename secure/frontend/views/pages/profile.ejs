@@ -21,7 +21,7 @@
 </div>
 <div class="mt-12 px-5 pb-5 border-b-1 border-stone-700">
     <h1 id="username-display" class="text-2xl font-bold"><%= profileUser.username %></h1>
-    <p id="email-display" class="text-gray-500"><%= profileUser.email %></p>
+    <p id="email-display" class="text-gray-500">@<%= profileUser.tag || profileUser.username %></p>
     <p id="bio-display" class="mt-4"><%= profileUser.bio %></p>
     <div class="flex flex-row gap-5 mt-4">
         <p><span class="font-bold"><%= profileUser.following_count %></span> Following</p>
@@ -206,7 +206,7 @@ editProfileForm.addEventListener('submit', async (e) => {
         const data = await response.json();
         
         document.getElementById('username-display').textContent = data.user.username;
-        document.getElementById('email-display').textContent = data.user.email;
+        document.getElementById('email-display').textContent = `@${data.user.tag || data.user.username}`;
         document.getElementById('bio-display').textContent = data.user.bio;
         
         if (data.user.profile_image) {

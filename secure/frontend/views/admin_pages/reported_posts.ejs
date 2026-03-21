@@ -10,7 +10,7 @@
                 <img src="<%= r.author_profile_image || 'https://via.placeholder.com/32' %>" class="size-8 rounded-full" alt="">
                 <div>
                     <a href="/profile/<%= r.author_id %>" class="font-semibold hover:underline"><%= r.author_username %></a>
-                    <span class="text-gray-500 text-sm ml-2">@<%= r.author_email %></span>
+                    <span class="text-gray-500 text-sm ml-2">@<%= r.author_tag || r.author_username %></span>
                 </div>
                 <span class="ml-auto text-gray-500 text-xs">
                     <%= new Date(r.post_created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %>
@@ -21,7 +21,7 @@
                 <span><span class="text-red-400 font-semibold">Reason:</span> <%= r.reason %></span>
                 <span class="text-gray-500">Reported by
                     <span class="text-gray-300"><%= r.reporter_username %></span>
-                    (<%= r.reporter_email %>)
+                    (@<%= r.reporter_tag || r.reporter_username %>)
                 </span>
                 <span class="text-gray-500">
                     <%= new Date(r.reported_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %>

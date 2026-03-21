@@ -3,6 +3,7 @@ const pool = require('../../db/pool');
 const { authMiddleware, optionalAuth } = require('../../middleware/auth');
 const { HTTP_STATUS } = require('../../config/constants');
 const { getFollowCounts } = require('../../utils/postHelpers');
+const { buildPublicTag } = require('../../utils/publicTag');
 const { handleError } = require('../../utils/routeHelpers');
 
 /**
@@ -12,7 +13,7 @@ const { handleError } = require('../../utils/routeHelpers');
 function register(router) {
   router.get('/profile', authMiddleware, async (req, res) => {
     try {
-      const sql = 'SELECT id, username, email, profile_image, background_image, bio, created_at FROM users WHERE id = $1';
+      const sql = 'SELECT id, username, public_tag AS tag, email, profile_image, background_image, bio, created_at FROM users WHERE id = $1';
       const result = await pool.query(sql, [req.user.userId]);
 
       if (result.rows.length === 0) {
@@ -65,14 +66,20 @@ function register(router) {
       }
 
       values.push(req.user.userId);
-      const sql = `UPDATE users SET ${updates.join(', ')} WHERE id = $${values.length} RETURNING id, username, email, profile_image, background_image, bio, created_at`;
+      const sql = `UPDATE users SET ${updates.join(', ')} WHERE id = $${values.length} RETURNING id, username, public_tag AS tag, email, profile_image, background_image, bio, created_at`;
       const result = await pool.query(sql, values);
 
       if (result.rows.length === 0) {
         return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'User not found' });
       }
 
-      return res.json({ user: result.rows[0] });
+      const updatedUser = result.rows[0];
+      if (username !== undefined) {
+        updatedUser.tag = buildPublicTag(updatedUser.username, updatedUser.id);
+        await pool.query('UPDATE users SET public_tag = $1 WHERE id = $2', [updatedUser.tag, updatedUser.id]);
+      }
+
+      return res.json({ user: updatedUser });
     } catch (error) {
       return handleError(res, error, 'Error updating profile');
     }
@@ -82,7 +89,7 @@ function register(router) {
     const userId = req.params.id;
 
     try {
-      const sql = 'SELECT id, username, email, profile_image, background_image, bio, created_at FROM users WHERE id = $1';
+      const sql = 'SELECT id, username, public_tag AS tag, profile_image, background_image, bio, created_at FROM users WHERE id = $1';
       const result = await pool.query(sql, [userId]);
 
       if (result.rows.length === 0) {

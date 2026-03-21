@@ -5,6 +5,7 @@ const pool = require('../db/pool');
 const { AUTH, HTTP_STATUS } = require('../config/constants');
 const { authMiddleware } = require('../middleware/auth');
 const { blacklistToken } = require('../utils/tokenBlacklist');
+const { buildPublicTag } = require('../utils/publicTag');
 const { handleError } = require('../utils/routeHelpers');
 
 const router = express.Router();
@@ -21,10 +22,13 @@ router.post('/register', async (req, res) => {
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
-    const sql = 'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email, created_at';
+    const sql = 'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, created_at';
     const result = await pool.query(sql, [username, email, passwordHash]);
+    const user = result.rows[0];
+    const publicTag = buildPublicTag(user.username, user.id);
+    await pool.query('UPDATE users SET public_tag = $1 WHERE id = $2', [publicTag, user.id]);
 
-    return res.status(HTTP_STATUS.CREATED).json({ success: true, user: result.rows[0] });
+    return res.status(HTTP_STATUS.CREATED).json({ success: true, user: { ...user, tag: publicTag } });
   } catch (error) {
     return handleError(res, error, 'Error registering user');
   }

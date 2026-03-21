@@ -10,7 +10,7 @@ const { handleError } = require('../../utils/routeHelpers');
 function register(router) {
   router.get('/suggestions', authMiddleware, async (req, res) => {
     try {
-      const sql = 'SELECT id, username, email, profile_image, background_image FROM users WHERE id != $1 ORDER BY created_at LIMIT $2';
+      const sql = 'SELECT id, username, public_tag AS tag, profile_image, background_image FROM users WHERE id != $1 ORDER BY created_at LIMIT $2';
       const result = await pool.query(sql, [req.user.userId, PAGINATION.USER_SUGGESTIONS_LIMIT]);
 
       const userIds = result.rows.map(u => u.id);
@@ -35,7 +35,7 @@ function register(router) {
     try {
       const searchPattern = `%${q}%`;
       const result = await pool.query(
-        `SELECT id, username, email, profile_image
+        `SELECT id, username, public_tag AS tag, profile_image
          FROM users
          WHERE id != $1
            AND username ILIKE $2

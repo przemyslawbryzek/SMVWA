@@ -36,7 +36,7 @@
             <img class="size-8 xl:size-10 rounded-full flex-shrink-0" id="profile-img-sidebar" src="<%= user.profile_image || 'https://via.placeholder.com/40' %>">
             <div class="hidden xl:flex flex-col ml-3 overflow-hidden">
                 <p id="username" class="truncate"><%= user.username %></p>
-                <p id="email" class="text-gray-500 text-sm truncate"><%= user.email %></p>
+                <p id="email" class="text-gray-500 text-sm truncate">@<%= user.tag || user.username %></p>
             </div>
             <p class="ml-auto pl-2 text-gray-400 hidden xl:block">···</p>
         </div>

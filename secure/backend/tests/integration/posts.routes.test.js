@@ -67,7 +67,7 @@ function mockEnrichPost(post, withUserId = true) {
   const empty = { rows: [] };
   // 1. authors
   pool.query.mockResolvedValueOnce({
-    rows: [{ id: post.user_id, username: 'alice', email: 'a@a.com', profile_image: null }],
+    rows: [{ id: post.user_id, username: 'alice', tag: 'alice_1', profile_image: null }],
   });
   // 2. comments count
   pool.query.mockResolvedValueOnce(empty);

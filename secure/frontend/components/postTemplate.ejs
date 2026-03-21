@@ -17,14 +17,14 @@
         <div class="flex flex-col ml-3 w-full">
             <div class="flex flex-row items-center gap-2 w-full">
                 <a href="/profile/<%= post.author.id %>" class="relative z-10 font-bold hover:underline"><%= post.author.username %></a>
-                <p class="text-gray-500">@<%= post.author.email %></p>
+                <p class="text-gray-500">@<%= post.author.tag || post.author.username %></p>
                 <p class="text-gray-500">· <time datetime="<%= new Date(post.created_at).toISOString() %>" data-date="<%= post.created_at %>"><%= new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></time></p>
                 <button class="relative z-10 action-btn flex items-center gap-1 hover:text-blue-500 transition-colors ml-auto"
                         data-action="more"
                         data-post-id="<%= post.id %>"
                         data-post-author-id="<%= post.author.id %>"
                         data-post-author="<%= encodeURIComponent(post.author.username || '') %>"
-                        data-post-author-email="<%= encodeURIComponent(post.author.email || '') %>"
+                        data-post-author-tag="<%= encodeURIComponent(post.author.tag || '') %>"
                         data-post-author-avatar="<%= encodeURIComponent(post.author.profile_image || '') %>"
                         data-post-content="<%= encodeURIComponent((post.content || '').replace(/\n/g, ' ')) %>">
                     <img class="size-5" src="https://img.icons8.com/?size=100&id=12620&format=png&color=808080">
@@ -101,7 +101,7 @@
                             src="<%= post.citation.author.profile_image || 'https://via.placeholder.com/40' %>"
                             alt="Profile">
                         <p class="font-bold text-sm"><%= post.citation.author.username %></p>
-                        <p class="text-gray-500 text-sm">@<%= post.citation.author.email %></p>
+                        <p class="text-gray-500 text-sm">@<%= post.citation.author.tag || post.citation.author.username %></p>
                         <p class="text-gray-500">· <time datetime="<%= new Date(post.citation.created_at).toISOString() %>" data-date="<%= post.citation.created_at %>"><%= new Date(post.citation.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></time></p>
                     </div>
                     <p class="text-sm mt-1"><%- parseContent(post.citation.content) %></p>

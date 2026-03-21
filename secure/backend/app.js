@@ -5,6 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const { setupWebSocket } = require('./websocket');
+const pool = require('./db/pool');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,6 +48,33 @@ app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   const status = err.status || 500;
   res.status(status).json({ error: err.message || 'Internal server error' });
+});
+
+async function ensureRuntimeSchema() {
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS public_tag VARCHAR(64)');
+  await pool.query(`
+    UPDATE users
+    SET public_tag = CONCAT(
+      LEFT(COALESCE(NULLIF(REGEXP_REPLACE(LOWER(username), '[^a-z0-9_]', '', 'g'), ''), 'user'), 24),
+      '_',
+      id::text
+    )
+    WHERE public_tag IS NULL OR public_tag = ''
+  `);
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_users_public_tag ON users (public_tag)');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS revoked_tokens (
+      token_hash VARCHAR(64) PRIMARY KEY,
+      expires_at TIMESTAMP NOT NULL,
+      revoked_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires_at ON revoked_tokens (expires_at)');
+}
+
+ensureRuntimeSchema().catch((err) => {
+  console.error('Runtime schema setup failed:', err.message);
 });
 
 const server = http.createServer(app);

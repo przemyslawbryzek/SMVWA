@@ -93,7 +93,7 @@ function register(router) {
         return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Post not found' });
       }
       const post = postResult.rows[0];
-      if (post.user_id !== req.user.userId) {
+      if (post.user_id !== req.user.userId && req.user.role !== 'admin') {
         return res.status(HTTP_STATUS.FORBIDDEN).json({ error: 'Forbidden' });
       }
       await pool.query('DELETE FROM posts WHERE id = $1', [postId]);

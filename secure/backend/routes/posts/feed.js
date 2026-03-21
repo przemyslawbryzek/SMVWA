@@ -56,7 +56,7 @@ function register(router) {
         );
 
         usersResult = await pool.query(
-          `SELECT id, username, profile_image, email, bio
+          `SELECT id, username, profile_image, public_tag AS tag, bio
            FROM users 
            WHERE (username ILIKE $1 OR bio ILIKE $1) AND id != $2
            ORDER BY username 

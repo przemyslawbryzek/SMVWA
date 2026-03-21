@@ -15,7 +15,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req, res) => {
     const { page, limit } = validatePaginationParams(req.query);
     const offset = (page - 1) * limit;
     const result = await pool.query(
-      'SELECT id, username, email, profile_image FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      'SELECT id, username, public_tag AS tag, profile_image FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2',
       [limit, offset]
     );
     return res.json({ success: true, users: result.rows, page, limit });
@@ -59,11 +59,11 @@ router.get('/reported/posts', authMiddleware, requireAdmin, async (req, res) => 
         p.created_at AS post_created_at,
         author.id        AS author_id,
         author.username  AS author_username,
-        author.email     AS author_email,
+        author.public_tag AS author_tag,
         author.profile_image AS author_profile_image,
         reporter.id       AS reporter_id,
         reporter.username AS reporter_username,
-        reporter.email    AS reporter_email
+        reporter.public_tag AS reporter_tag
       FROM reported_posts rp
       JOIN posts p ON p.id = rp.post_id
       JOIN users author   ON author.id = p.user_id
@@ -85,11 +85,11 @@ router.get('/reported/users', authMiddleware, requireAdmin, async (req, res) => 
         ru.created_at  AS reported_at,
         reported.id            AS user_id,
         reported.username      AS username,
-        reported.email         AS email,
+        reported.public_tag    AS tag,
         reported.profile_image AS profile_image,
         reporter.id       AS reporter_id,
         reporter.username AS reporter_username,
-        reporter.email    AS reporter_email
+        reporter.public_tag AS reporter_tag
       FROM reported_users ru
       JOIN users reported ON reported.id = ru.reported_user_id
       JOIN users reporter ON reporter.id = ru.reporting_user_id

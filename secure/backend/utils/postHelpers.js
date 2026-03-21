@@ -37,7 +37,7 @@ async function enrichPosts(posts, userId = null) {
   let authors, comments, likes, reposts, userLikes, userReposts, citations;
   try {
     [authors, comments, likes, reposts, userLikes, userReposts, citations] = await Promise.all([
-    pool.query(`SELECT id, username, email, profile_image FROM users WHERE id = ANY($1)`, [
+    pool.query(`SELECT id, username, public_tag AS tag, profile_image FROM users WHERE id = ANY($1)`, [
       userIds,
     ]),
     pool.query(
@@ -66,7 +66,7 @@ async function enrichPosts(posts, userId = null) {
       : { rows: [] },
     citationIds.length > 0
       ? pool.query(
-          `SELECT p.id, p.content, p.attachments, p.created_at, u.id as user_id, u.username, u.email, u.profile_image FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ANY($1)`,
+          `SELECT p.id, p.content, p.attachments, p.created_at, u.id as user_id, u.username, u.public_tag AS tag, u.profile_image FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ANY($1)`,
           [citationIds]
         )
       : { rows: [] },
@@ -93,7 +93,7 @@ async function enrichPosts(posts, userId = null) {
         author: {
           id: c.user_id,
           username: c.username,
-          email: c.email,
+          tag: c.tag,
           profile_image: c.profile_image,
         },
       },

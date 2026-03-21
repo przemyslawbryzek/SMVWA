@@ -10,14 +10,14 @@
                 <img src="<%= r.profile_image || 'https://via.placeholder.com/32' %>" class="size-8 rounded-full" alt="">
                 <div>
                     <a href="/profile/<%= r.user_id %>" class="font-semibold hover:underline"><%= r.username %></a>
-                    <span class="text-gray-500 text-sm ml-2">@<%= r.email %></span>
+                    <span class="text-gray-500 text-sm ml-2">@<%= r.tag || r.username %></span>
                 </div>
             </div>
             <div class="border border-red-900 rounded-lg p-3 bg-stone-900 text-sm flex flex-wrap gap-x-4 gap-y-1">
                 <span><span class="text-red-400 font-semibold">Reason:</span> <%= r.reason %></span>
                 <span class="text-gray-500">Reported by
                     <span class="text-gray-300"><%= r.reporter_username %></span>
-                    (<%= r.reporter_email %>)
+                    (@<%= r.reporter_tag || r.reporter_username %>)
                 </span>
                 <span class="text-gray-500">
                     <%= new Date(r.reported_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %>

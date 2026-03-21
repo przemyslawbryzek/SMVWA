@@ -39,6 +39,14 @@ async function exec(sql, params = []) {
   return client.query(sql, params);
 }
 
+function buildPublicTag(username, id) {
+  const normalized = String(username || 'user')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '')
+    .slice(0, 24) || 'user';
+  return `${normalized}_${id}`;
+}
+
 // ─── drop all tables (reverse FK order) ─────────────────────────────────────
 
 async function dropAll() {
@@ -125,8 +133,11 @@ async function seed() {
        RETURNING id`,
       [u.username, u.email, hash, u.bio, u.isAdmin],
     );
-    userIds[u.username] = res.rows[0].id;
-    log(`  User created: ${u.username} (id=${res.rows[0].id}, admin=${u.isAdmin})`);
+    const userId = res.rows[0].id;
+    const publicTag = buildPublicTag(u.username, userId);
+    await exec('UPDATE users SET public_tag = $1 WHERE id = $2', [publicTag, userId]);
+    userIds[u.username] = userId;
+    log(`  User created: ${u.username} (id=${userId}, tag=${publicTag}, admin=${u.isAdmin})`);
   }
 
   // alice follows bob, bob follows alice, mallory follows everyone

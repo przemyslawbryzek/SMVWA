@@ -32,7 +32,7 @@
              class="hidden absolute bottom-full left-0 w-48 mb-1 bg-stone-900 border border-stone-700 rounded-xl shadow-lg overflow-hidden z-50">
             <div class="px-4 py-3 border-b border-stone-700">
                 <p class="font-semibold text-sm truncate"><%= user.username %></p>
-                <p class="text-gray-500 text-xs truncate"><%= user.email %></p>
+                <p class="text-gray-500 text-xs truncate">@<%= user.tag || user.username %></p>
             </div>
             <a href="/logout"
                class="flex items-center gap-3 px-4 py-3 hover:bg-stone-800 font-semibold text-sm">

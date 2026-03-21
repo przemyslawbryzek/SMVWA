@@ -144,7 +144,7 @@ const DEFAULT_CARD_TEMPLATE = `<!DOCTYPE html>
   <div class="card">
     <img class="avatar" src="<%= user.profile_image %>" alt="avatar">
     <h1><%= user.username %></h1>
-    <p class="handle">@<%= user.email %></p>
+    <p class="handle">@<%= user.tag || user.username %></p>
     <p class="bio"><%= user.bio || 'No bio yet.' %></p>
     <div class="stats">
       <div class="stat"><span><%= user.followers_count %></span><small>Followers</small></div>

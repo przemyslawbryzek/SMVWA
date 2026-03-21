@@ -19,7 +19,7 @@ function showMoreMenu(postId, button) {
   const authorId = Number(button.dataset.postAuthorId);
   const canModify = currentUser && (currentUser.id === authorId || currentUser.role === 'admin');
   const postAuthor = safeDecode(button.dataset.postAuthor);
-  const postEmail = safeDecode(button.dataset.postAuthorEmail);
+  const postTag = safeDecode(button.dataset.postAuthorTag);
   const postAvatar = safeDecode(button.dataset.postAuthorAvatar);
   const postContent = safeDecode(button.dataset.postContent);
 
@@ -45,7 +45,7 @@ function showMoreMenu(postId, button) {
               data-menu-action="quote"
               data-post-id="${postId}"
               data-post-author="${postAuthor.replace(/"/g, '&quot;')}"
-              data-post-author-email="${postEmail.replace(/"/g, '&quot;')}"
+                data-post-author-tag="${postTag.replace(/"/g, '&quot;')}"
               data-post-author-avatar="${postAvatar.replace(/"/g, '&quot;')}"
               data-post-content="${postContent.replace(/"/g, '&quot;')}">
         Quote
@@ -95,7 +95,7 @@ function showMoreMenu(postId, button) {
 
 let _quoteCurrentPostId = null;
 
-function showQuoteModal(postId, author, email, avatar, content) {
+function showQuoteModal(postId, author, tag, avatar, content) {
   const modal = document.getElementById('quote-modal');
   const textarea = document.getElementById('quote-content');
   if (!modal) {return;}
@@ -104,7 +104,7 @@ function showQuoteModal(postId, author, email, avatar, content) {
 
   document.getElementById('quote-cited-post').href = `/post/${postId}`;
   document.getElementById('quote-cited-author').textContent = author;
-  document.getElementById('quote-cited-email').textContent = email ? `@${email}` : '';
+  document.getElementById('quote-cited-email').textContent = tag ? `@${tag}` : '';
   document.getElementById('quote-cited-content').textContent = content;
   const avatar_el = document.getElementById('quote-cited-avatar');
   avatar_el.src = avatar || 'https://via.placeholder.com/20';
@@ -234,7 +234,7 @@ document.addEventListener('click', async e => {
     showQuoteModal(
       postId,
       item.dataset.postAuthor || '',
-      item.dataset.postAuthorEmail || '',
+      item.dataset.postAuthorTag || '',
       item.dataset.postAuthorAvatar || '',
       item.dataset.postContent || ''
     );
