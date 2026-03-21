@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const pool = require('../db/pool');
 const { authMiddleware } = require('../middleware/auth');
+const { requireCsrf } = require('../middleware/csrf');
 const { HTTP_STATUS } = require('../config/constants');
 const { handleError } = require('../utils/routeHelpers');
 
@@ -23,7 +24,7 @@ const chatStorage = multer.diskStorage({
 });
 const chatUpload = multer({ storage: chatStorage });
 
-// POST /api/chat/upload — upload a file attachment for chat (no auth required)
+// POST /api/chat/upload — upload a file attachment for chat (public endpoint)
 router.post('/upload', chatUpload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'No file provided' });
@@ -111,7 +112,7 @@ router.get('/conversations/:partnerId/messages', authMiddleware, async (req, res
   }
 });
 
-router.post('/conversations/:partnerId/messages', authMiddleware, async (req, res) => {
+router.post('/conversations/:partnerId/messages', authMiddleware, requireCsrf, async (req, res) => {
   const userId = req.user.userId;
   const partnerId = req.params.partnerId;
   const { content, attachment } = req.body;

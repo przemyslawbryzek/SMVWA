@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const pool = require('../db/pool');
 const { AUTH, HTTP_STATUS } = require('../config/constants');
 const { authMiddleware } = require('../middleware/auth');
+const { requireCsrf } = require('../middleware/csrf');
 const { blacklistToken } = require('../utils/tokenBlacklist');
 const { buildPublicTag } = require('../utils/publicTag');
 const { handleError } = require('../utils/routeHelpers');
@@ -19,7 +20,7 @@ function hashPasswordResetToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-router.post('/register', async (req, res) => {
+router.post('/register', requireCsrf, async (req, res) => {
   const { username, email, password, confirm_password } = req.body;
 
   if (!username || !email || !password || !confirm_password) {
@@ -43,7 +44,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', requireCsrf, async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -77,7 +78,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/logout', authMiddleware, async (req, res) => {
+router.post('/logout', authMiddleware, requireCsrf, async (req, res) => {
   const authToken = req.cookies?.auth;
   await blacklistToken(authToken, req.user?.exp);
   res.clearCookie('auth', {
@@ -88,7 +89,7 @@ router.post('/logout', authMiddleware, async (req, res) => {
   return res.json({ success: true, message: 'Logged out successfully' });
 });
 
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', requireCsrf, async (req, res) => {
   const { email } = req.body;
   if (!email) {return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'Email is required' });}
 
@@ -120,7 +121,7 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', requireCsrf, async (req, res) => {
   const { token, new_password } = req.body;
   if (!token || !new_password) {
     return res

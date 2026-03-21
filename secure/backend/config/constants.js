@@ -3,6 +3,12 @@ module.exports = {
     JWT_SECRET: process.env.JWT_SECRET || 'smvwa-dev-jwt-secret-change-me',
     PASSWORD_RESET_TOKEN_TTL_MINUTES: 10,
   },
+  CSRF: {
+    COOKIE_NAME: 'csrf_token',
+    HEADER_NAME: 'x-csrf-token',
+    TOKEN_BYTES: 32,
+    COOKIE_MAX_AGE_MS: 24 * 60 * 60 * 1000,
+  },
   PAGINATION: {
     DEFAULT_LIMIT: 20,
     MAX_LIMIT: 100,

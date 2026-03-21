@@ -1,5 +1,6 @@
 const pool = require('../../db/pool');
 const { authMiddleware } = require('../../middleware/auth');
+const { requireCsrf } = require('../../middleware/csrf');
 const { enrichPosts } = require('../../utils/postHelpers');
 const { handleError } = require('../../utils/routeHelpers');
 const { HTTP_STATUS } = require('../../config/constants');
@@ -35,7 +36,7 @@ async function toggleUserPostAction(table, userId, postId) {
  * @param {import('express').Router} router
  */
 function register(router) {
-  router.post('/:id/like', authMiddleware, async (req, res) => {
+  router.post('/:id/like', authMiddleware, requireCsrf, async (req, res) => {
     const postId = req.params.id;
     try {
       const added = await toggleUserPostAction('likes', req.user.userId, postId);
@@ -45,7 +46,7 @@ function register(router) {
     }
   });
 
-  router.post('/:id/repost', authMiddleware, async (req, res) => {
+  router.post('/:id/repost', authMiddleware, requireCsrf, async (req, res) => {
     const postId = req.params.id;
     try {
       const added = await toggleUserPostAction('reposts', req.user.userId, postId);
@@ -55,7 +56,7 @@ function register(router) {
     }
   });
 
-  router.post('/:id/report', authMiddleware, async (req, res) => {
+  router.post('/:id/report', authMiddleware, requireCsrf, async (req, res) => {
     const postId = req.params.id;
     const { reason } = req.body;
     try {

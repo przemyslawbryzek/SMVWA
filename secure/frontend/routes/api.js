@@ -13,6 +13,7 @@ const upload = multer();
 
 router.post('/api/upload', upload.array('attachments', 5), async (req, res) => {
   try {
+    const axiosConfig = getAxiosConfig(req);
     const formData = new FormData();
 
     if (req.files && req.files.length > 0) {
@@ -24,18 +25,18 @@ router.post('/api/upload', upload.array('attachments', 5), async (req, res) => {
       });
     }
 
-    const axiosConfig = {
-      ...getAxiosConfig(req),
+    const uploadConfig = {
+      ...axiosConfig,
       method: 'POST',
       url: `${API_URL}/api/upload`,
       data: formData,
       headers: {
+        ...(axiosConfig.headers || {}),
         ...formData.getHeaders(),
-        ...(req.cookies && req.cookies.auth ? { Cookie: `auth=${req.cookies.auth}` } : {}),
       },
     };
 
-    const response = await axios(axiosConfig);
+    const response = await axios(uploadConfig);
     res.status(response.status).json(response.data);
   } catch (error) {
     console.error('Upload proxy error:', error.message);
@@ -194,18 +195,20 @@ router.post('/api/profile/export', async (req, res) => {
 router.post('/api/chat/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file' });
+    const axiosConfig = getAxiosConfig(req);
     const formData = new FormData();
     formData.append('file', req.file.buffer, {
       filename: req.file.originalname,
       contentType: req.file.mimetype,
     });
     const response = await axios({
+      ...axiosConfig,
       method: 'POST',
       url: `${API_URL}/api/chat/upload`,
       data: formData,
       headers: {
+        ...(axiosConfig.headers || {}),
         ...formData.getHeaders(),
-        ...(req.cookies && req.cookies.auth ? { Cookie: `auth=${req.cookies.auth}` } : {}),
       },
     });
     res.status(response.status).json(response.data);

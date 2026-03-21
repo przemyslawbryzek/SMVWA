@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const { API_URL } = require('../config');
+const { getAxiosConfig } = require('../middleware/cookieForward');
 
 const router = express.Router();
 router.get('/login', (req, res) => {
@@ -11,10 +12,11 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    const axiosConfig = getAxiosConfig(req);
     const response = await axios.post(
       `${API_URL}/api/auth/login`,
       { email, password },
-      { withCredentials: true }
+      axiosConfig
     );
     const authToken = response.data.token;
 
@@ -39,10 +41,11 @@ router.post('/register', async (req, res) => {
   const { username, email, password, confirm_password } = req.body;
 
   try {
+    const axiosConfig = getAxiosConfig(req);
     await axios.post(
       `${API_URL}/api/auth/register`,
       { username, email, password, confirm_password },
-      { withCredentials: true }
+      axiosConfig
     );
     res.redirect('/login');
   } catch (error) {
@@ -53,12 +56,12 @@ router.post('/register', async (req, res) => {
 
 router.get('/logout', async (req, res) => {
   try {
+    const axiosConfig = getAxiosConfig(req);
     await axios.post(
       `${API_URL}/api/auth/logout`,
       {},
       {
-        withCredentials: true,
-        headers: req.cookies?.auth ? { Cookie: `auth=${req.cookies.auth}` } : {},
+        ...axiosConfig,
       }
     );
   } catch (error) {
@@ -81,7 +84,8 @@ router.get('/forgot-password', (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
   try {
-    const response = await axios.post(`${API_URL}/api/auth/forgot-password`, { email });
+    const axiosConfig = getAxiosConfig(req);
+    const response = await axios.post(`${API_URL}/api/auth/forgot-password`, { email }, axiosConfig);
     res.render('forgot.ejs', { error: null, debugToken: response.data.debug_token });
   } catch (error) {
     const msg = error.response?.data?.error || 'Something went wrong';
@@ -98,10 +102,11 @@ router.get('/reset-password', (req, res) => {
 router.post('/reset-password', async (req, res) => {
   const { token, new_password } = req.body;
   try {
+    const axiosConfig = getAxiosConfig(req);
     const response = await axios.post(`${API_URL}/api/auth/reset-password`, {
       token,
       new_password,
-    });
+    }, axiosConfig);
     res.render('reset.ejs', { token, error: null, success: response.data.message });
   } catch (error) {
     const msg = error.response?.data?.error || 'Reset failed';

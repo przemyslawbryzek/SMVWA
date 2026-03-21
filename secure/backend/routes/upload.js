@@ -2,6 +2,8 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { authMiddleware } = require('../middleware/auth');
+const { requireCsrf } = require('../middleware/csrf');
 const { HTTP_STATUS } = require('../config/constants');
 const { handleError } = require('../utils/routeHelpers');
 
@@ -24,7 +26,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-router.post('/', upload.array('attachments', 5), (req, res) => {
+router.post('/', authMiddleware, requireCsrf, upload.array('attachments', 5), (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'No files uploaded' });

@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../db/pool');
 const { authMiddleware, requireAdmin } = require('../middleware/auth');
+const { requireCsrf } = require('../middleware/csrf');
 const { HTTP_STATUS, PAGINATION } = require('../config/constants');
 const { handleError } = require('../utils/routeHelpers');
 const {
@@ -27,7 +28,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req, res) => {
   }
 });
 
-router.delete('/users/:id', authMiddleware, requireAdmin, async (req, res) => {
+router.delete('/users/:id', authMiddleware, requireAdmin, requireCsrf, async (req, res) => {
   const userId = req.params.id;
   try {
     await pool.query('DELETE FROM users WHERE id = $1', [userId]);
@@ -37,7 +38,7 @@ router.delete('/users/:id', authMiddleware, requireAdmin, async (req, res) => {
   }
 });
 
-router.delete('/posts/:id', authMiddleware, requireAdmin, async (req, res) => {
+router.delete('/posts/:id', authMiddleware, requireAdmin, requireCsrf, async (req, res) => {
   const postId = req.params.id;
   try {
     await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
@@ -101,7 +102,7 @@ router.get('/reported/users', authMiddleware, requireAdmin, async (req, res) => 
   }
 });
 
-router.delete('/reported/posts/:id', authMiddleware, requireAdmin, async (req, res) => {
+router.delete('/reported/posts/:id', authMiddleware, requireAdmin, requireCsrf, async (req, res) => {
   const reportId = req.params.id;
   try {
     await pool.query('DELETE FROM reported_posts WHERE id = $1', [reportId]);
@@ -111,7 +112,7 @@ router.delete('/reported/posts/:id', authMiddleware, requireAdmin, async (req, r
   }
 });
 
-router.delete('/reported/users/:id', authMiddleware, requireAdmin, async (req, res) => {
+router.delete('/reported/users/:id', authMiddleware, requireAdmin, requireCsrf, async (req, res) => {
   const reportId = req.params.id;
   try {
     await pool.query('DELETE FROM reported_users WHERE id = $1', [reportId]);

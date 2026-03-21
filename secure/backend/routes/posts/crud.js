@@ -1,11 +1,11 @@
 const pool = require('../../db/pool');
 const { authMiddleware, optionalAuth } = require('../../middleware/auth');
+const { requireCsrf } = require('../../middleware/csrf');
 const { enrichPosts } = require('../../utils/postHelpers');
 const { handleError } = require('../../utils/routeHelpers');
 const { HTTP_STATUS } = require('../../config/constants');
 const {
   validatePostInput,
-  validatePaginationParams,
   ValidationError,
 } = require('../../validators/postValidator');
 
@@ -16,7 +16,7 @@ const {
  * @param {import('express').Router} router
  */
 function register(router) {
-  router.post('/', authMiddleware, async (req, res) => {
+  router.post('/', authMiddleware, requireCsrf, async (req, res) => {
     try {
       const { content, attachment_urls, root_id, parent_id, citation_id } = req.body;
 
@@ -57,7 +57,7 @@ function register(router) {
     }
   });
 
-  router.put('/:id', authMiddleware, async (req, res) => {
+  router.put('/:id', authMiddleware, requireCsrf, async (req, res) => {
     const postId = req.params.id;
     const { content, attachment_urls } = req.body;
     try {
@@ -85,7 +85,7 @@ function register(router) {
     }
   });
 
-  router.delete('/:id', authMiddleware, async (req, res) => {
+  router.delete('/:id', authMiddleware, requireCsrf, async (req, res) => {
     const postId = req.params.id;
     try {
       const postResult = await pool.query('SELECT * FROM posts WHERE id = $1', [postId]);

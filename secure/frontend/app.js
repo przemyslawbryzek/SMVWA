@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const { decodeAuthCookie } = require('./middleware/auth');
+const { ensureCsrfCookie } = require('./middleware/csrf');
 const { parseContent } = require('./utils/contentParser');
 
 const app = express();
@@ -27,6 +28,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(ensureCsrfCookie);
 
 app.locals.parseContent = parseContent;
 

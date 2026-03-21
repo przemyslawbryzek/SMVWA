@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const pool = require('../../db/pool');
 const { authMiddleware, optionalAuth } = require('../../middleware/auth');
+const { requireCsrf } = require('../../middleware/csrf');
 const { HTTP_STATUS } = require('../../config/constants');
 const { getFollowCounts } = require('../../utils/postHelpers');
 const { buildPublicTag } = require('../../utils/publicTag');
@@ -29,7 +30,7 @@ function register(router) {
     }
   });
 
-  router.put('/profile', authMiddleware, async (req, res) => {
+  router.put('/profile', authMiddleware, requireCsrf, async (req, res) => {
     try {
       const { username, email, bio, profile_image, background_image, password } = req.body;
 

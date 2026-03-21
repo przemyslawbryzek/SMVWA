@@ -1,5 +1,6 @@
 const pool = require('../../db/pool');
 const { authMiddleware } = require('../../middleware/auth');
+const { requireCsrf } = require('../../middleware/csrf');
 const { HTTP_STATUS } = require('../../config/constants');
 const { handleError } = require('../../utils/routeHelpers');
 
@@ -8,7 +9,7 @@ const { handleError } = require('../../utils/routeHelpers');
  * @param {import('express').Router} router
  */
 function register(router) {
-  router.post('/:id/follow', authMiddleware, async (req, res) => {
+  router.post('/:id/follow', authMiddleware, requireCsrf, async (req, res) => {
     const userIdToFollow = req.params.id;
 
     try {
@@ -35,7 +36,7 @@ function register(router) {
     }
   });
 
-  router.delete('/:id/follow', authMiddleware, async (req, res) => {
+  router.delete('/:id/follow', authMiddleware, requireCsrf, async (req, res) => {
     const userIdToUnfollow = req.params.id;
 
     try {
@@ -54,7 +55,7 @@ function register(router) {
     }
   });
 
-  router.post('/:id/report', authMiddleware, async (req, res) => {
+  router.post('/:id/report', authMiddleware, requireCsrf, async (req, res) => {
     const userIdToReport = req.params.id;
     const { reason } = req.body;
 
