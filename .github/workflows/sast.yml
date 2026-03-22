@@ -27,22 +27,22 @@ jobs:
           node-version: "18"
 
       - name: Install backend dependencies
-        working-directory: vulnerable/backend
+        working-directory: secure/backend
         run: npm ci
 
       - name: Install frontend dependencies
-        working-directory: vulnerable/frontend
+        working-directory: secure/frontend
         run: npm ci
 
       - name: Create reports directories
-        run: mkdir -p vulnerable/backend/reports vulnerable/frontend/reports
+        run: mkdir -p secure/backend/reports secure/frontend/reports
 
       - name: Run ESLint on backend
-        working-directory: vulnerable/backend
+        working-directory: secure/backend
         run: npm run lint:security
 
       - name: Run ESLint on frontend
-        working-directory: vulnerable/frontend
+        working-directory: secure/frontend
         run: npm run lint:security
 
       - name: Upload ESLint reports
@@ -51,8 +51,8 @@ jobs:
         with:
           name: eslint-security-report
           path: |
-            vulnerable/backend/reports/eslint-security.json
-            vulnerable/frontend/reports/eslint-security.json
+            secure/backend/reports/eslint-security.json
+            secure/frontend/reports/eslint-security.json
           retention-days: 30
 
   # -----------------------------------------------------------------------
@@ -67,10 +67,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Semgrep (custom rules)
-        working-directory: vulnerable
+        working-directory: secure
         run: |
           semgrep scan \
-            --config .semgrep/custom-rules.yml \
+            --config ../.semgrep/custom-rules.yml \
             --sarif \
             --output semgrep.sarif \
             backend/ frontend/ || true
@@ -79,7 +79,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: vulnerable/semgrep.sarif
+          sarif_file: secure/semgrep.sarif
           category: semgrep
 
       - name: Upload Semgrep SARIF artifact
@@ -87,7 +87,7 @@ jobs:
         if: always()
         with:
           name: semgrep-sarif
-          path: vulnerable/semgrep.sarif
+          path: secure/semgrep.sarif
           retention-days: 30
 
   # -----------------------------------------------------------------------
@@ -103,7 +103,7 @@ jobs:
       - name: Run njsscan
         uses: ajinabraham/njsscan-action@master
         with:
-          args: "vulnerable/backend vulnerable/frontend --sarif --output njsscan.sarif"
+          args: "secure/backend secure/frontend --sarif --output njsscan.sarif"
 
       - name: Upload njsscan SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
@@ -146,7 +146,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # ESLint findings summary
-          BACKEND_JSON="artifacts/eslint-security-report/vulnerable/backend/reports/eslint-security.json"
+          BACKEND_JSON="artifacts/eslint-security-report/secure/backend/reports/eslint-security.json"
           if [ -f "$BACKEND_JSON" ]; then
             ERRORS=$(python3 -c "import json; d=json.load(open('$BACKEND_JSON')); print(sum(m['severity']==2 for f in d for m in f['messages']))")
             WARNINGS=$(python3 -c "import json; d=json.load(open('$BACKEND_JSON')); print(sum(m['severity']==1 for f in d for m in f['messages']))")
@@ -156,7 +156,7 @@ jobs:
           fi
 
           # Semgrep findings summary
-          SARIF="artifacts/semgrep-sarif/vulnerable/semgrep.sarif"
+          SARIF="artifacts/semgrep-sarif/secure/semgrep.sarif"
           if [ -f "$SARIF" ]; then
             COUNT=$(python3 -c "import json; d=json.load(open('$SARIF')); print(len(d['runs'][0].get('results',[])))")
             echo "" >> $GITHUB_STEP_SUMMARY

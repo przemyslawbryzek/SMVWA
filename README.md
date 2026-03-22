@@ -1,6 +1,23 @@
-# SMVWA — Social Media Vulnerable Web Application
+
+# SMVWA — Social Media Vulnerable & Secure Web Application
+
 
 **A deliberately vulnerable Node.js/Express application for security training, penetration testing, and security engineering education.**
+
+---
+
+## Project Versions
+
+- **Vulnerable version** (default):
+   - All vulnerabilities are present by design for educational and testing purposes.
+   - See this README for details and usage.
+
+- **Secure version:**
+   - All known vulnerabilities have been fixed.
+   - Use as a reference for secure Node.js/Express/PostgreSQL development.
+   - See [secure/README.md](secure/README.md) for details and usage instructions.
+
+---
 
 > Comprehensive DAST + SAST reports included. Demonstrates real-world vulnerabilities in a Twitter-like social media platform.
 
@@ -13,6 +30,7 @@
 - **SAST Report:** [pentest/SAST/SAST_REPORT.md](pentest/SAST/SAST_REPORT.md) — 103 findings via Semgrep + njsscan
 - **Individual Reports:** [pentest/DAST/reports/](pentest/DAST/reports/) — Detailed PoC for each vulnerability
 - **Vulnerable Code:** [vulnerable/](vulnerable/) — Source code and tests
+- **Secure Code** [secuer/](secure/) - Mitigate version
 
 ---
 

@@ -1,7 +1,8 @@
-# SMVWA — Social Media Vulnerable Web Application
 
-> **WARNING**
-> This application contains **intentional security vulnerabilities**. Run it only in an isolated environment (local machine / VM). Never expose it to a public network.
+# SMVWA — Social Media Secure Web Application
+
+> **SECURE VERSION**
+> This application is a hardened, production-grade version of SMVWA. All previously identified vulnerabilities have been fixed. Suitable for secure development, code review, and as a reference for best practices.
 
 
 ---
@@ -21,15 +22,19 @@
 
 ---
 
+
 ## About
 
-SMVWA is a deliberately vulnerable social media application (Twitter clone) built with Node.js. It is designed for learning and practising offensive and defensive security techniques in a controlled environment.
+SMVWA Secure is a hardened social media application (Twitter clone) built with Node.js. This version contains **no known vulnerabilities** and follows secure coding best practices. It is designed for:
 
-The project bridges two perspectives:
-- **Developer** — understand how vulnerabilities are introduced in production-like code
-- **Pentester** — practise exploitation on a realistic web application
+- **Developers** — as a reference for secure Node.js/Express/PostgreSQL application architecture
+- **Security engineers** — for code review, secure design, and as a baseline for SAST/DAST tools
+- **Educators** — to demonstrate secure implementations and compare with the vulnerable version
+
+All vulnerabilities present in the original SMVWA have been remediated in this version.
 
 ---
+
 
 ## Tech Stack
 
@@ -73,6 +78,7 @@ The project bridges two perspectives:
 
 ---
 
+
 ## Architecture
 
 ```
@@ -106,12 +112,14 @@ The project bridges two perspectives:
 ---
 ![database diagra](backend/db/dbdiagram.png)
 
+
 ## Requirements
 
 - [Docker](https://docs.docker.com/get-docker/) + [Docker Compose](https://docs.docker.com/compose/)
 - Node.js 18+ (only needed to run tests locally)
 
 ---
+
 
 ## Getting Started
 
@@ -151,6 +159,7 @@ docker-compose down -v     # stop containers + remove the database volume
 
 ---
 
+
 ## Database Management
 
 ```bash
@@ -165,6 +174,7 @@ docker-compose exec backend node db/init.js --no-seed
 
 ---
 
+
 ## Demo Accounts
 
 Created automatically by `db/init.js`:
@@ -177,6 +187,7 @@ Created automatically by `db/init.js`:
 | `mallory@smvwa.local` | `Mallory1234!` | User |
 
 ---
+
 
 
 ## Tests
@@ -205,6 +216,7 @@ npm run test:watch        # watch mode (TDD)
 | `tests/integration/chat.routes.test.js` | File upload, path traversal, messages |
 
 ---
+
 
 ## SAST
 
@@ -244,6 +256,7 @@ The workflow at `.github/workflows/sast.yml` runs automatically on push/PR and:
 - Archives JSON/SARIF artifacts for 30 days
 
 ---
+
 
 ## Project Structure
 

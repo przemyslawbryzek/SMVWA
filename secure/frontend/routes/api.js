@@ -283,12 +283,18 @@ router.post('/api/chat/upload', upload.single('file'), async (req, res) => {
 router.all('/api/*', async (req, res) => {
   try {
     const apiPath = req.path;
+    // Get client IP from request (trusts X-Forwarded-For if present, else remote address)
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
     const axiosConfig = {
       ...getAxiosConfig(req),
       method: req.method,
       url: `${API_URL}${apiPath}`,
       data: req.body,
       params: req.query,
+      headers: {
+        ...((getAxiosConfig(req) && getAxiosConfig(req).headers) || {}),
+        'X-Forwarded-For': clientIp,
+      },
     };
 
     const response = await axios(axiosConfig);

@@ -24,19 +24,51 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: storage });
 
-router.post('/', authMiddleware, requireCsrf, upload.array('attachments', 5), (req, res) => {
-  try {
+// Allowed file types and max size (5MB per file)
+const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.txt'];
+const ALLOWED_MIME_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'application/pdf',
+  'text/plain',
+];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+function fileFilter(req, file, cb) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    return cb(new Error('Prohibited file type'));
+  }
+  if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    return cb(new Error('Prohibited file type'));
+  }
+  cb(null, true);
+}
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: { fileSize: MAX_FILE_SIZE },
+});
+
+router.post('/', authMiddleware, requireCsrf, (req, res, next) => {
+  upload.array('attachments', 5)(req, res, function (err) {
+    if (err) {
+      let message = err.message || 'Upload error';
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        message = 'File is too large (max 5MB)';
+      }
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: message });
+    }
     if (!req.files || req.files.length === 0) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'No files uploaded' });
     }
     const baseUrl = process.env.BACKEND_URL || 'http://localhost:3001';
     const fileUrls = req.files.map(file => `${baseUrl}/uploads/${file.filename}`);
     return res.status(201).json({ attachment_urls: fileUrls });
-  } catch (error) {
-    return handleError(res, error, 'Upload error');
-  }
+  });
 });
 
 module.exports = router;

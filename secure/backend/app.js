@@ -8,6 +8,8 @@ const { setupWebSocket } = require('./websocket');
 const { ensureCsrfCookie } = require('./middleware/csrf');
 const pool = require('./db/pool');
 
+const rateLimit = require('express-rate-limit');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -28,15 +30,54 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(ensureCsrfCookie);
+app.set('trust proxy', 1);
+
+// --- Rate limiting ---
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 10,
+  message: { error: 'Too many requests, try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const postLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 min
+  max: 10,
+  message: { error: 'Too many posts/actions, slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const uploadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 min
+  max: 5,
+  message: { error: 'Too many uploads, try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const previewLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 min
+  max: 10,
+  message: { error: 'Too many previews, try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/api/auth', authRoutes);
-app.use('/api/posts', postsRoutes);
-app.use('/api/users', usersRoutes);
-app.use('/api/upload', uploadRoutes);
+// Auth endpoints (register, login, reset-password)
+app.use('/api/auth', authLimiter, authRoutes);
+// Posts endpoints (create, like, repost, report, comments, thread)
+app.use('/api/posts', postLimiter, postsRoutes);
+// User actions (follow, report)
+app.use('/api/users', postLimiter, usersRoutes);
+// Upload endpoints
+app.use('/api/upload', uploadLimiter, uploadRoutes);
+// Admin endpoints (no rate limit)
 app.use('/api/admin', adminRoutes);
-app.use('/api/chat', chatRoutes);
+// Chat endpoints (upload, messages)
+app.use('/api/chat', uploadLimiter, chatRoutes);
+// Preview endpoint (link preview)
+app.use('/api/posts/preview', previewLimiter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: Math.floor(process.uptime()) });
@@ -52,46 +93,6 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: err.message || 'Internal server error' });
 });
 
-async function ensureRuntimeSchema() {
-  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS public_tag VARCHAR(64)');
-  await pool.query(`
-    UPDATE users
-    SET public_tag = CONCAT(
-      LEFT(COALESCE(NULLIF(REGEXP_REPLACE(LOWER(username), '[^a-z0-9_]', '', 'g'), ''), 'user'), 24),
-      '_',
-      id::text
-    )
-    WHERE public_tag IS NULL OR public_tag = ''
-  `);
-  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_users_public_tag ON users (public_tag)');
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS password_resets (
-      id SERIAL PRIMARY KEY,
-      user_id INT REFERENCES users(id) ON DELETE CASCADE,
-      token_hash VARCHAR(64) NOT NULL,
-      expires_at TIMESTAMP NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
-    )
-  `);
-  await pool.query('ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS token_hash VARCHAR(64)');
-  await pool.query('ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP');
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON password_resets (token_hash)');
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_password_resets_expires_at ON password_resets (expires_at)');
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS revoked_tokens (
-      token_hash VARCHAR(64) PRIMARY KEY,
-      expires_at TIMESTAMP NOT NULL,
-      revoked_at TIMESTAMP DEFAULT NOW()
-    )
-  `);
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires_at ON revoked_tokens (expires_at)');
-}
-
-ensureRuntimeSchema().catch((err) => {
-  console.error('Runtime schema setup failed:', err.message);
-});
 
 const server = http.createServer(app);
 setupWebSocket(server);
